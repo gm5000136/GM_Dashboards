@@ -150,7 +150,7 @@ WHEN
 	RuleNumberToApply IN (4,21)
 	And TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'Small Trusts'
 	then 75
-WHEN RuleNumberToApply = 5 THEN 0 --Shop related rules not created yet
+WHEN RuleNumberToApply = 5 Then 51 --No such thing as regular wahoo, so any would have to be shop
 WHEN RuleNumberToApply = 6 THEN 53 --Will be more complex than this in reality
 --WHEN RuleNumberToApply = 7 and sub.GiftCode = 'SMS' then 55 --Will be more complex than this in reality --CANNOT DEAL WITH THIS YET SO THEY ALL GO TO DRTV FOR THE AMENDMENTS
 WHEN RuleNumberToApply = 7 then 33 --Will be more complex than this in reality
@@ -203,6 +203,7 @@ WHEN RuleNumberToApply = 22 then 50
 WHEN RuleNumberToApply = 23 then 50
 WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' then 72
 when RuleNumberToApply = 24 then 49
+WHEN RuleNumberToApply = 26 THEN 53 --Will be more complex than this in reality
 else 999
 end as ID,
 [£]
@@ -292,7 +293,7 @@ WHEN
 	RuleNumberToApply IN (4,21)
 	And TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'Small Trusts'
 	then 75
-WHEN RuleNumberToApply = 5 THEN 0 --Shop related rules not created yet
+WHEN RuleNumberToApply = 5 Then 51 --No such thing as regular wahoo, so any would have to be shop
 WHEN RuleNumberToApply = 6 THEN 53 --Will be more complex than this in reality
 --WHEN RuleNumberToApply = 7 and sub.GiftCode = 'SMS' then 55 --Will be more complex than this in reality --CANNOT DEAL WITH THIS YET SO THEY ALL GO TO DRTV FOR THE AMENDMENTS
 WHEN RuleNumberToApply = 7 then 33 --Will be more complex than this in reality
@@ -345,6 +346,7 @@ WHEN RuleNumberToApply = 22 then 50
 WHEN RuleNumberToApply = 23 then 50
 WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' then 72
 when RuleNumberToApply = 24 then 49
+WHEN RuleNumberToApply = 26 THEN 53 --Will be more complex than this in reality
 else 999
 end as ID,
 [£]
@@ -422,7 +424,7 @@ WHEN
 	RuleNumberToApply IN (4,21)
 	And TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'Small Trusts'
 	then 75
-WHEN RuleNumberToApply = 5 THEN 0 --Shop related rules not created yet
+WHEN RuleNumberToApply = 5 Then 51 --No such thing as regular wahoo, so any would have to be shop
 WHEN RuleNumberToApply = 6 THEN 53 --Will be more complex than this in reality
 --WHEN RuleNumberToApply = 7 and sub.GiftCode = 'SMS' then 55 --Will be more complex than this in reality --CANNOT DEAL WITH THIS YET SO THEY ALL GO TO DRTV FOR THE AMENDMENTS
 WHEN RuleNumberToApply = 7 then 33 --Will be more complex than this in reality
@@ -475,6 +477,7 @@ WHEN RuleNumberToApply = 22 then 50
 WHEN RuleNumberToApply = 23 then 50
 WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' then 72
 when RuleNumberToApply = 24 then 49
+WHEN RuleNumberToApply = 26 THEN 53 --Will be more complex than this in reality
 else 999
 end as ID,
 [£]
@@ -562,19 +565,9 @@ group by CalendarYearMonth,ID,FormsPartOf,Level,Description
 
 */
 
-
-
-
-
---step 4: actual RG payments received by component
-
-
-
-
-
 union all
 
---step 5: actual cash received by component
+--step 4: actual cash received by component
 
 select
 'ValueOfCashGifts' as [Type],
@@ -599,7 +592,8 @@ WHEN
 	And TargetAudience = 'Small Trusts'
 	then 75
 WHEN RuleNumberToApply IN (4,21) THEN 39
-WHEN RuleNumberToApply = 5 THEN 0 --Shop related rules not created yet
+WHEN RuleNumberToApply = 5 and GiftCode like '%Wahoo%' THEN 46
+WHEN RuleNumberToApply = 5 Then 51
 WHEN RuleNumberToApply = 6 THEN 53 --Will be more complex than this in reality
 WHEN RuleNumberToApply = 7 and sub.GiftCode = 'SMS' then 55 --Will be more complex than this in reality
 WHEN RuleNumberToApply = 7 then 33 --Will be more complex than this in reality
@@ -614,6 +608,7 @@ WHEN RuleNumberToApply = 22 then 50
 WHEN RuleNumberToApply = 23 then 50
 WHEN RuleNumberToApply = 24 AND TargetAudience = 'High Value Supporter' then 72
 when RuleNumberToApply = 24 then 49
+WHEN RuleNumberToApply = 26 THEN 53 --Will be more complex than this in reality
 ELSE 999 END AS DashGroup,
 DIM_Date.CalendarYearMonth,
 sub.GM_TIEStyle_CampaignDescriptor,
@@ -697,9 +692,8 @@ where AttributeCategory = 'Target Audience'
 ) AllTargetAudiences on AllTargetAudiences.GiftFactID = sub.GiftFactID_of_the_CashGift  
 
 /*
-Here's where to select time
+Below is where to select date when checking/working on the script!
 */
-
 --where dim_date.IsCurrentFiscalYear = 1
 ) as sub
 LEFT OUTER JOIN
