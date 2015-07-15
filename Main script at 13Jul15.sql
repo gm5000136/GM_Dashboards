@@ -132,7 +132,7 @@ SubToGetValues.ID,
 FormsPartOf,
 Level,
 Description,
-SUM([£]) as [£]
+SUM([Â£]) as [Â£]
 
 into #MainResultsTable
 
@@ -205,7 +205,7 @@ WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmen
 when RuleNumberToApply = 24 then 49
 else 999
 end as ID,
-[£]
+[Â£]
 from
 (
 	select
@@ -215,7 +215,7 @@ from
 	TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
 	n.AppealTypeForUpgradesOnly as AppealTypeFromAppealID,
 	PackageCategoryDescription,
-	SUM(n.AnnualValue) as [£]
+	SUM(n.AnnualValue) as [Â£]
 	from 
 	#NewRGFacts N
 	--where n.CalendarYearMonth > 201503
@@ -252,7 +252,7 @@ ID,
 FormsPartOf,
 Level,
 Description,
-SUM(VIEW_RG_History.ChangeInAnnualisedAmount) as [£]
+SUM(VIEW_RG_History.ChangeInAnnualisedAmount) as [Â£]
 from VIEW_RG_History 
 left outer join A_GM_DashBoards_Grouping
 on A_GM_DashBoards_Grouping.ID = VIEW_RG_History.DashGroup
@@ -277,7 +277,7 @@ SubToGetValues.ID,
 FormsPartOf,
 Level,
 Description,
-SUM([£]) as [£]
+SUM([Â£]) as [Â£]
 from
 (
 select
@@ -347,7 +347,7 @@ WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmen
 when RuleNumberToApply = 24 then 49
 else 999
 end as ID,
-[£]
+[Â£]
 from
 (
 	select
@@ -357,7 +357,7 @@ from
 	TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
 	AppealType as AppealTypeFromAppealID,
 	PackageCategoryDescription,
-	SUM(ChangeInAnnualisedValueFromUpgrade) as [£]
+	SUM(ChangeInAnnualisedValueFromUpgrade) as [Â£]
 	from 
 	#AmendmentFacts
 	--where calendaryearmonth_of_amendment > 201503
@@ -407,7 +407,7 @@ SubToGetValues.ID,
 FormsPartOf,
 Level,
 Description,
-SUM([£]) as [£]
+SUM([Â£]) as [Â£]
 from
 (
 select
@@ -477,7 +477,7 @@ WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmen
 when RuleNumberToApply = 24 then 49
 else 999
 end as ID,
-[£]
+[Â£]
 from
 (
 	select
@@ -487,7 +487,7 @@ from
 	TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
 	c.AppealTypeForUpgradesOnly as AppealTypeFromAppealID,
 	PackageCategoryDescription,
-	SUM(c.ValueCancelled) as [£]
+	SUM(c.ValueCancelled) as [Â£]
 	from 
 	#CancellationFacts C
 	--where c.CalendarYearMonth > 201503
@@ -546,7 +546,7 @@ ID,
 FormsPartOf,
 Level,
 Description,
--1*(SUM(VIEW_RG_History.ChangeInAnnualisedAmount)) as [£]
+-1*(SUM(VIEW_RG_History.ChangeInAnnualisedAmount)) as [Â£]
 from 
 VIEW_RG_History
 left outer join A_GM_DashBoards_Grouping
@@ -583,7 +583,7 @@ ID,
 FormsPartOf,
 Level,
 Description,
-SUM([£]) as [£]
+SUM([Â£]) as [Â£]
 from
 (
 select
@@ -617,7 +617,7 @@ when RuleNumberToApply = 24 then 49
 ELSE 999 END AS DashGroup,
 DIM_Date.CalendarYearMonth,
 sub.GM_TIEStyle_CampaignDescriptor,
-Amount as [£]
+Amount as [Â£]
 from
 
 (
@@ -729,7 +729,7 @@ rgsummary.ID,
 FormsPartOf,
 Level,
 Description,
-SUM([£]) as [£]
+SUM([Â£]) as [Â£]
 from
 (
 select
@@ -766,7 +766,7 @@ when BeforeOrAfterApril = 'Gift started before this financial year' and PaymentT
 when BeforeOrAfterApril = 'Gift started during this financial year' and PaymentType = 'Direct Debit' then 80 --rule R33
 when BeforeOrAfterApril = 'Gift started during this financial year' and PaymentType <> 'Direct Debit' then 81 --rule R34
 end as ID,
-Value as [£]
+Value as [Â£]
 from
 (
 	select *
@@ -819,11 +819,11 @@ case
 	when r.CalendarYearMonth > (select CalendarYearMonth from DIM_Date where IsCurrentDate = 1) then 1 else 0 
 end as IsFUTUREMonth,
 Target,
-r.[£] - Target AS [Over(Under)Target],
+r.[Â£] - Target AS [Over(Under)Target],
 case 
 	when Target is null Or Target = 0 then null 
-	when [£] IS null Or [£] = 0 then null
-	else 100*(r.[£] - Target) / Target 
+	when [Â£] IS null Or [Â£] = 0 then null
+	else 100*(r.[Â£] - Target) / Target 
 end as [%Over(Under)Target]
 from 
 #MainResultsTable R
@@ -854,11 +854,11 @@ case
 	when r.CalendarYearMonth > (select CalendarYearMonth from DIM_Date where IsCurrentDate = 1) then 1 else 0 
 end as IsFUTUREMonth,
 Target,
-r.[£] - Target AS [Over(Under)Target],
+r.[Â£] - Target AS [Over(Under)Target],
 case 
 	when Target is null Or Target = 0 then null 
-	when [£] IS null Or [£] = 0 then null
-	else 100*(r.[£] - Target) / Target 
+	when [Â£] IS null Or [Â£] = 0 then null
+	else 100*(r.[Â£] - Target) / Target 
 end as [%Over(Under)Target]
 into #MonthlyActualsWorking
 from 
@@ -941,7 +941,7 @@ m.Level,
 m.Description,
 m.IsCurrentMonth,
 m.IsFUTUREMonth,
-m.[£] as MonthActual,
+m.[Â£] as MonthActual,
 m.Target,
 m.[Over(Under)Target],
 m.[%Over(Under)Target]
@@ -960,7 +960,7 @@ from
 select
 M.Type,
 m.ID,
-SUM([£]) as YTDActual,
+SUM([Â£]) as YTDActual,
 SUM(Target) as YTDTarget
 from #MonthlyActualsWorking M
 where calendaryearmonth
@@ -1108,7 +1108,7 @@ ID,
 FormsPartOf,
 Level,
 Description,
-SUM([£]) as [£]
+SUM([Â£]) as [Â£]
 from #MainResultsTable
 inner join
 (
@@ -1124,8 +1124,3 @@ FormsPartOf,
 Level,
 Description
 */
-
-
-
-
-
