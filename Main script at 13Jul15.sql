@@ -8,6 +8,14 @@ and AppealIdentifier not like 'RA/%'
 and AppealDescription not like '%Unallocated%'
 and AppealDescription not like '%Unicef%'
 
+--preprestep 2: appealidentifiers to be regarded as rollingSMS (for ID 58)
+--relevant to cash payments only
+select distinct left(packageidentifier,6) as RollingSMSAppealID 
+into #AppealsToBeTreatedAsRollingSMS
+from DIM_Package
+where PackageCategoryDescription = 'SMS'
+and (SUBSTRING(packageidentifier,4,3) = 'CAC' or SUBSTRING(packageidentifier,4,3) = 'CAD')
+
 
 --prestep 1: store facts on all amendments
 
@@ -585,6 +593,8 @@ CASE
 WHEN sub.GM_TIEStyle_CampaignDescriptor like 'Supporter Development%'
 AND TargetAudience = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19')
 then 72
+--this second one for cash only applies the 'pre-rule' for rollingSMS, not currently a numbered rule (since campaign is not of use to us)
+WHEN sub.appealidentifier in (select RollingSMSAppealID from #AppealsToBeTreatedAsRollingSMS) then 58
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
 WHEN RuleNumberToApply IN (1, 2, 3) THEN 0 --Events and community rules not created yet
 WHEN 
