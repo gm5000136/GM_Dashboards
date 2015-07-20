@@ -1,3 +1,5 @@
+--this is full version to find every month ever. By limiting it again in places indicated (search for word 'limiting') we can speed it up
+
 --Constraints
 --Individuals only. But NOT limited to 'IGE' regular gifts.
 --Entire script takes 9 minutes to run
@@ -5,7 +7,7 @@
 --10 regular giving calculation
 --I tried using CTEs for this, but there's just too much data even though there was no index suggestion. Temp tables coped fine in a very tiny fraction of the time CTE approach took.
 
---All regular gifts with the months they were either given or amended - takes 35 seconds alone
+--All regular gifts with the months they were either given or amended - takes 35 seconds alone with limiter
 select LatestSequence.*,pt.PaymentType,Amounts.AnnualisedAmount
 into #RegularGiftDetails
 from
@@ -27,7 +29,7 @@ inner join DIM_PaymentType PT on PT.PaymentTypeDimID = fact_gift.PaymentTypeDimI
 ;
 --All regular gifts crossed with every single relevant month since that gift began (including first month)
 --Limited to months from 1415FY onwards to save time (easy to remove that)
---takes 105 seconds alone
+--takes 105 seconds alone with limiter
 select distinct GiftFactID_of_the_RG, CalendarYearMonth as EveryRelevantMonth
 into #EveryMonthGiftMayHaveExisted
 from 
@@ -38,7 +40,7 @@ VIEW_RG_History inner join DIM_Date on DIM_Date.DateDimID = VIEW_RG_History.[Dat
 group by GiftFactID_of_the_RG
 ) r inner join 
 DIM_Date d on d.CalendarYearMonth >= r.GiftStartMonth
-where d.CalendarYearMonth >201303 --just limiting for speed
+--where d.CalendarYearMonth >201303 --just limiting for speed
 and CalendarYearMonth < (select top 1 CalendarYearMonth from DIM_Date where IsCurrentMonth = 1)
 ;
 
@@ -133,7 +135,7 @@ from AmountGiven_CTE a
 inner join MonthLookup_CTE m on m.EveryMonthWithin24 = a.CalendarYearMonth
 --where constituentID = 533496 [checking]
 where m.CalendarYearMonth < (select top 1 CalendarYearMonth from DIM_Date where IsCurrentMonth = 1)
-and m.CalendarYearMonth >201303 --just to limit results a bit for speed
+--and m.CalendarYearMonth >201303 --just limiting results a bit for speed
 group by ConstituentID,m.CalendarYearMonth 
 
 ;
