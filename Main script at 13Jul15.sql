@@ -253,7 +253,6 @@ Description
 union all
 
 /* old step 1
-
 select
 'AnnualValueOfNewRegularGifts' as [Type],
 CalendarYearMonth, 
@@ -269,7 +268,6 @@ inner join DIM_Date on dim_date.DateDimID = VIEW_RG_History.[DatedimID of gift o
 where VIEW_RG_History.IsOriginal = 1
 --and VIEW_RG_History.[DatedimID of gift or amendment] >201503
 group by CalendarYearMonth,ID,FormsPartOf,Level,Description
-
 */
 
 
@@ -549,7 +547,6 @@ Description
 
 
 /*old step 3
-
 select 
 'AnnualValueCancelledThisMonth' as [Type],
 CalendarYearMonth, 
@@ -570,7 +567,6 @@ and A_GM_GiftStatusDate.[Gift Status] in ('Terminated','Cancelled')
 left outer join DIM_Date 
 on [Gift Status Date] = ActualDateString
 group by CalendarYearMonth,ID,FormsPartOf,Level,Description
-
 */
 
 union all
@@ -595,8 +591,111 @@ AND TargetAudience = 'High Value Supporter' and RuleNumberToApply not IN ('17','
 then 72
 --this second one for cash only applies the 'pre-rule' for rollingSMS, not currently a numbered rule (since campaign is not of use to us)
 WHEN sub.appealidentifier in (select RollingSMSAppealID from #AppealsToBeTreatedAsRollingSMS) then 58
-WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
-WHEN RuleNumberToApply IN (1, 2, 3) THEN 0 --Events and community rules not created yet
+--rule C1: separate out all peer to peer WHERE A COMMUNITY OR EVENTS GIFT
+when (sub.GM_TIEStyle_CampaignDescriptor like 'Event%' OR sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
+and sub.TargetAudience = 'Peer to Peer Fundraiser'
+and 
+(
+sub.GM_TIEStyle_CampaignDescriptor like '%Running%'
+OR
+sub.GM_TIEStyle_CampaignDescriptor like '%Walking%'
+OR
+sub.GM_TIEStyle_CampaignDescriptor like '%Climbing%'
+or
+sub.GM_TIEStyle_CampaignDescriptor like '%Cycling%'
+or
+sub.GM_TIEStyle_CampaignDescriptor like '%Other Sports%'
+or
+sub.GM_TIEStyle_CampaignDescriptor like '%Obstacle%'
+or
+sub.GM_TIEStyle_CampaignDescriptor like '%Water Related%'
+or
+sub.GM_TIEStyle_CampaignDescriptor like '%Triathlon%'
+OR
+sub.GM_TIEStyle_CampaignDescriptor like '%Multi-Discipline%'
+OR
+sub.GM_TIEStyle_CampaignDescriptor like '%Marathon%'
+or
+sub.GM_TIEStyle_CampaignDescriptor like '%Adrenaline%'
+)
+then 84
+when (sub.GM_TIEStyle_CampaignDescriptor like 'Event%' OR sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
+and sub.TargetAudience = 'Peer to Peer Fundraiser'
+and 
+(
+sub.GM_TIEStyle_CampaignDescriptor like '%In Celebration%'
+)
+then 86
+when (sub.GM_TIEStyle_CampaignDescriptor like 'Event%' OR sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
+and sub.TargetAudience = 'Peer to Peer Fundraiser'
+then 87
+--that's the end of rule 1. At the moment, not enough detail to add any gifts to number 85
+--rule CE2: assign Glastonbury gifts received in any part of community or events
+when (sub.GM_TIEStyle_CampaignDescriptor like 'Event%' OR sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
+and sub.Product = 'Glastonbury Festival'
+then 26
+--rule CE3. For the remaining (i.e. not peer-to-peer and not glastonbury) events and community gifts...lots in the one rule to keep numbering
+--rule CE3 part 1: mass participation
+when (sub.GM_TIEStyle_CampaignDescriptor like 'Event%' OR sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
+and Product in ('WaterAid 200','Tough Sh!t') --these were the only ones time of writing 28Jul15
+then 88
+--rule CE3 part 2: running/cycling/other active events
+when (sub.GM_TIEStyle_CampaignDescriptor like 'Event%' OR sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
+and 
+(
+sub.GM_TIEStyle_CampaignDescriptor like '%Running%'
+OR
+sub.GM_TIEStyle_CampaignDescriptor like '%Walking%'
+OR
+sub.GM_TIEStyle_CampaignDescriptor like '%Climbing%'
+or
+sub.GM_TIEStyle_CampaignDescriptor like '%Cycling%'
+or
+sub.GM_TIEStyle_CampaignDescriptor like '%Other Sports%'
+or
+sub.GM_TIEStyle_CampaignDescriptor like '%Obstacle%'
+or
+sub.GM_TIEStyle_CampaignDescriptor like '%Water Related%'
+or
+sub.GM_TIEStyle_CampaignDescriptor like '%Triathlon%'
+OR
+sub.GM_TIEStyle_CampaignDescriptor like '%Multi-Discipline%'
+OR
+sub.GM_TIEStyle_CampaignDescriptor like '%Marathon%'
+or
+sub.GM_TIEStyle_CampaignDescriptor like '%Adrenaline%'
+)
+then 25
+--rule CE3 part 3: other events fundraising (i.e. all else starting events)
+when (sub.GM_TIEStyle_CampaignDescriptor like 'Event%') then 27
+--rule CE3 part 4: split community based on target audience
+when (sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
+and TargetAudience = 'Faith Groups' then 28
+when (sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
+and TargetAudience = 'Schools' then 29
+when (sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
+and TargetAudience = 'Local Groups' then 89
+when (sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
+and TargetAudience = 'Choir Groups' then 91
+when (sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
+and TargetAudience = 'Youth Groups' then 92
+when (sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
+and TargetAudience = 'Universities' then 93
+when (sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
+and TargetAudience 
+IN
+(
+'Inner Wheel Clubs',
+'Lions',
+'Other Community Groups', --I put these here for now, not 100% sure they should be?
+'Other Professional Groups',
+'Other Women''s Groups',
+'Rotary',
+'Soroptimist Clubs'
+)
+then 30
+--no speaker network gifts at the moment - Caroline told me they'd be better kept with the target audience of the gifts, although informal(ish) attempts to measure effect of talks on giving are made
+WHEN RuleNumberToApply = 0 THEN DefaultGroupingID --we are now passed the 'pre-rule' stuff...
 WHEN 
 	RuleNumberToApply IN (4,21)
 	And TargetAudience = 'Small Trusts'
@@ -753,7 +852,7 @@ AND
 	AND 
 	MainSummary.GM_TIEStyle_CampaignDescriptor not like 'NULL%'
 	AND
-	MainSummary.GM_TIEStyle_CampaignDescriptor not like 'Direct Marketing Tea-m%'
+	MainSummary.GM_TIEStyle_CampaignDescriptor not like 'Direct Marketing Team%'
 	AND
 	MainSummary.GM_TIEStyle_CampaignDescriptor not like 'Sdev%'
 	AND
@@ -813,7 +912,6 @@ Description
 --Target Comparison 1 - month by month with no YTD aspect
 
 /* commented out since forms part of below combined one
-
 select 
 R.*,
 case 
@@ -842,7 +940,6 @@ where r.CalendarYearMonth
 select min(calendaryearmonth) as EarliestTargetSet
 from A_GM_Dashboards_Targets
 )
-
 */
 
 
@@ -1030,12 +1127,8 @@ and t.CalendarYearMonth in (select distinct CalendarYearMonth from DIM_Date wher
 
 
 /* ESTIMATING annual value of cancellations per appeal send made on basis of 'person's last appeal before they cancelled'
-
 --Some of the higher ones are reactivation and similar, is that a timing thing or do they reactivate and then cancel that?
-
 --currently only looks at most recent cancelled gift of each person - this could be changed...
-
-
 select
 UsingFullList.AppealIdentifier,
 COUNT([Constituent ID]) as People,
@@ -1095,8 +1188,6 @@ left outer join
 on #PeopleSentToPerAppeal.AppealIdentifier = #MainFacts.AppealIdentifier
 ) MainBit
 order by CancelledValuePerSend desc,CancelledValuePerDistinctSend desc
-
-
 */
 
 
