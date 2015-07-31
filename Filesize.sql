@@ -1,8 +1,8 @@
---this is full version to find every month ever. By limiting it again in places indicated (search for word 'limiting') we can speed it up
+--this is full version to find every month ever. By limiting it again in places indicated (search for word 'limiting') we can speed it up. It's complex but takes no longer than 30min at present
 
 --Constraints
 --Individuals only. But NOT limited to 'IGE' regular gifts.
---Entire script takes 9 minutes to run
+
 
 --10 regular giving calculation
 --I tried using CTEs for this, but there's just too much data even though there was no index suggestion. Temp tables coped fine in a very tiny fraction of the time CTE approach took.
@@ -28,7 +28,7 @@ inner join FACT_Gift on latestsequence.GiftFactID_of_the_RG = FACT_Gift.GiftFact
 inner join DIM_PaymentType PT on PT.PaymentTypeDimID = fact_gift.PaymentTypeDimID
 ;
 --All regular gifts crossed with every single relevant month since that gift began (including first month)
---Limited to months from 1415FY onwards to save time (easy to remove that)
+--Commented out limiter to months from specific month can save time
 --takes 105 seconds alone with limiter
 select distinct GiftFactID_of_the_RG, CalendarYearMonth as EveryRelevantMonth
 into #EveryMonthGiftMayHaveExisted
@@ -189,7 +189,6 @@ where KeyIndicator = 'O'
 
 
 /* this approach failed
-
 select
 l.constituentID,
 l.CalendarYearMonth,
@@ -219,7 +218,6 @@ and r.CalendarYearMonth = l.CalendarYearMonth
 left outer join 
 #IndividualCashResults c on c.constituentID = l.constituentid
 and c.CalendarYearMonth = l.CalendarYearMonth
-
 */
 
 ;
@@ -239,10 +237,69 @@ order by CalendarYearMonth,GiverCategory
 
 ;
 
+--50 Working out amount given DURING EACH MONTH by people in each category at END that month
+--Could easily be limited by month to save time
+--Individuals only
+--Allows ANY regular giving payment, but cash are limited to the current 'DMT + MD' definition
+
+select
+GiverCategory,
+GiftType,
+CalendarYearMonth,
+SUM(Total) as Total
+from
+(
+select sub_giving.*,s.GiverCategory from 
+(
+select c.constituentID,calendaryearmonth,'Cash' as GiftType,sum(amount) as Total
+from
+FACT_Gift g
+inner join DIM_Constituent c on c.ConstituentDimID = g.ConstituentDimID
+inner join DIM_Date d on d.DateDimID = g.GiftDateDimID
+inner join a_GM_TBL_AllCashGifts acg on acg.GiftFactID = g.GiftFactID
+where 
+GiftTypeDimID = 1
+and c.KeyIndicator = 'I'
+and [IsDMTOrMajorDonorCashGift?] = 'Yes' --so only these gifts...fact includes MD might need explaining!
+group by c.constituentID,calendaryearmonth
+union all
+select constituentID,calendaryearmonth,'RG Payment' as GiftType,sum(amount) as Total
+from
+FACT_Gift g
+inner join DIM_Constituent c on c.ConstituentDimID = g.ConstituentDimID
+inner join DIM_Date d on d.DateDimID = g.GiftDateDimID
+where 
+GiftTypeDimID = 31
+and c.KeyIndicator = 'I'
+group by constituentID,calendaryearmonth
+) sub_giving
+left outer join 
+#StatusOfEachPersonEachMonth s on s.ConstituentID = sub_giving.ConstituentID
+and s.CalendarYearMonth = sub_giving.CalendarYearMonth
+) sub_individualtotal
+group by
+GiverCategory,
+GiftType,
+CalendarYearMonth
+order by CalendarYearMonth,GiverCategory,GiftType
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /*
-
 --checking area in case useful queries to have ready
-
 select #StatusOfEachPersonEachMonth.ConstituentID,RegularGivingAnnualValue,AnnualValue_LargestActiveGift
 from 
 #StatusOfEachPersonEachMonth
@@ -255,5 +312,4 @@ select * from #RegularGiftDetails where ConstituentID = 1000094
 ;
 select * from #RegularGivingResults where ConstituentID = 1000094
 order by CalendarYearMonth
-
 */
