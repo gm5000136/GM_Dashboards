@@ -1,0 +1,60 @@
+SELECT     OriginalView.ConstituentID, OriginalView.GiftFactID_of_the_RG, OriginalView.ID_of_the_individual_gift_or_amendment, OriginalView.Sequence, 
+                      OriginalView.IsOriginal, OriginalView.AppealDescription, OriginalView.AppealIdentifier, OriginalView.CampaignIdentifier, OriginalView.CampaignDescription, 
+                      OriginalView.PackageIdentifier, OriginalView.PackageDescription, OriginalView.[DatedimID of gift or amendment], OriginalView.Amount, 
+                      OriginalView.AnnualisedAmount, OriginalView.ChangeInAmount, OriginalView.ChangeInAnnualisedAmount, OriginalView.InstallmentCountPerYear, 
+                      OriginalView.PreviousInstallmentCountPerYear, OriginalView.[FrequencyChanged?], OriginalView.GM_PreviousAnnualisedAmount, 
+                      OriginalView.GM_PreviousInstallmentAmount, OriginalView.GM_ChangeInAmount, OriginalView.GM_TIEStyle_CampaignDescriptor, 
+                      CASE WHEN DefaultGroupingID IS NULL 
+                      THEN 999 WHEN RuleNumberToApply = 4 THEN 50 WHEN RuleNumberToApply = 5 THEN 51 WHEN RuleNumberToApply = 6 THEN 54 WHEN (RuleNumberToApply = 7
+                       AND GCs.[Description] = 'SMS') THEN 55 WHEN RuleNumberToApply = 7 THEN 33 ELSE DefaultGroupingID END AS DashGroup
+FROM         (SELECT     sub.ConstituentID, sub.GiftFactID_of_the_RG, sub.GiftChangeFactID AS ID_of_the_individual_gift_or_amendment, sub.Sequence, sub.IsOriginal, 
+                                              sub.AppealDescription, sub.AppealIdentifier, sub.CampaignIdentifier, sub.CampaignDescription, sub.PackageIdentifier, sub.PackageDescription, 
+                                              sub.[DatedimID of gift or amendment], sub.Amount, sub.AnnualisedAmount, sub.ChangeInAmount, sub.ChangeInAnnualisedAmount, 
+                                              sub.InstallmentCountPerYear, sub.PreviousInstallmentCountPerYear, CASE WHEN PreviousInstallmentCountPerYear IS NULL 
+                                              THEN 'No' WHEN PreviousInstallmentCountPerYear = InstallmentCountPerYear THEN 'No' ELSE 'Yes' END AS [FrequencyChanged?], 
+                                              sub.AnnualisedAmount - sub.ChangeInAnnualisedAmount AS GM_PreviousAnnualisedAmount, (sub.AnnualisedAmount - sub.ChangeInAnnualisedAmount) 
+                                              / sub.PreviousInstallmentCountPerYear AS GM_PreviousInstallmentAmount, CASE WHEN [Amount] - ([annualisedamount] - [changeinannualisedamount]) 
+                                              / [PreviousInstallmentCountPerYear] IS NULL THEN changeinamount ELSE [Amount] - ([annualisedamount] - [changeinannualisedamount]) 
+                                              / [PreviousInstallmentCountPerYear] END AS GM_ChangeInAmount, 
+                                              CASE WHEN AppealCategoryDescription = 'CF/IS' THEN 'SDev - Appeal Unknown' WHEN AppealCategoryDescription = 'CF/IS/AU' THEN 'SDev - Autumn Cash Appeal'
+                                               WHEN AppealCategoryDescription = 'CF/IS/CA' THEN 'SDev - Feedback Activity' WHEN AppealCategoryDescription = 'CF/IS/CC' THEN 'SRec - Water Company Customer Campaign'
+                                               WHEN AppealCategoryDescription = 'CF/IS/CV' THEN 'SDev - Conversion to Committed Giving' WHEN AppealCategoryDescription = 'CF/IS/DM' THEN 'SRec - Cold Direct Mail'
+                                               WHEN AppealCategoryDescription = 'CF/IS/DR' THEN 'SDev - Doordrop Activity' WHEN AppealCategoryDescription = 'CF/IS/EA' THEN 'SDev - Other Cash Appeals'
+                                               WHEN AppealCategoryDescription = 'CF/IS/GA' THEN 'SDev - Gift Aid Activity' WHEN AppealCategoryDescription = 'CF/IS/HV' THEN 'SDev - High Value Supporter Activity - Cash & RG Ask'
+                                               WHEN AppealCategoryDescription = 'CF/IS/IN' THEN 'SRec - Inserts' WHEN AppealCategoryDescription = 'CF/IS/OA' THEN 'SDev - Supporter Magazine Oasis'
+                                               WHEN AppealCategoryDescription = 'CF/IS/PH' THEN 'SRec - Cold Telephone' WHEN AppealCategoryDescription = 'CF/IS/PR' THEN 'SRec - Press Advertisements'
+                                               WHEN AppealCategoryDescription = 'CF/IS/RV' THEN 'SDev - Reactivation Activity' WHEN AppealCategoryDescription = 'CF/IS/SH' THEN 'SDev - Shop Online & Offline'
+                                               WHEN AppealCategoryDescription = 'CF/IS/SP' THEN 'SDev - Spring Cash Appeal' WHEN AppealCategoryDescription = 'CF/IS/SU' THEN 'SDev - Summer Cash Appeal'
+                                               WHEN AppealCategoryDescription = 'CF/IS/TV' THEN 'SRec - Direct Response TV Ad' WHEN AppealCategoryDescription = 'CF/IS/UP' THEN 'SDev - Upgrade Activity'
+                                               WHEN AppealCategoryDescription = 'CF/IS/WB' THEN 'SRec - Online Not Categorised' WHEN AppealCategoryDescription = 'CF/IS/WI' THEN 'SDev - Winter Cash Appeal'
+                                               WHEN AppealCategoryDescription = 'CF/MD' THEN 'MajD - Not Categorised' WHEN AppealCategoryDescription = 'NF' THEN 'NatF - Not Categorised' WHEN
+                                               AppealCategoryDescription = 'NF/CM' THEN 'Comm - Not Categorised' WHEN AppealCategoryDescription = 'NF/CR' THEN 'Corp - Not Categorised' WHEN AppealCategoryDescription
+                                               = 'NF/PG' THEN 'Corp - Payroll Giving Appeals' WHEN AppealCategoryDescription = 'NF/RE' THEN 'WIP - Not Categorised' WHEN AppealCategoryDescription
+                                               = 'PP' THEN 'SDev - Campaigning Activity' ELSE (AppealCategoryDescription + ' - ' + DIM_Appeal_1.[CampaignDescription]) 
+                                              END AS GM_TIEStyle_CampaignDescriptor
+                       FROM          (SELECT     dbo.DIM_Constituent.ConstituentID, dbo.FACT_GiftChange.NewGiftFactID AS GiftFactID_of_the_RG, dbo.FACT_GiftChange.Sequence, 
+                                                                      dbo.FACT_GiftChange.GiftChangeFactID, dbo.FACT_GiftChange.IsOriginal, dbo.DIM_Appeal.AppealDescription, dbo.DIM_Appeal.AppealIdentifier, 
+                                                                      dbo.DIM_Campaign.CampaignIdentifier, dbo.DIM_Campaign.CampaignDescription, dbo.DIM_Package.PackageIdentifier, 
+                                                                      dbo.DIM_Package.PackageDescription, dbo.FACT_GiftChange.GiftDateDimID AS [DatedimID of gift or amendment], dbo.FACT_GiftChange.Amount, 
+                                                                      dbo.FACT_GiftChange.AnnualisedAmount, dbo.FACT_GiftChange.ChangeInAmount, dbo.FACT_GiftChange.ChangeInAnnualisedAmount, 
+                                                                      DIM_InstallmentFrequency_1.InstallmentCountPerYear, CASE WHEN Sequence = 1 THEN NULL 
+                                                                      ELSE DIM_InstallmentFrequency_2.InstallmentCountPerYear END AS PreviousInstallmentCountPerYear
+                                               FROM          dbo.FACT_GiftChange INNER JOIN
+                                                                      dbo.FACT_Gift ON dbo.FACT_GiftChange.NewGiftFactID = dbo.FACT_Gift.GiftFactID INNER JOIN
+                                                                      dbo.DIM_Constituent ON dbo.FACT_GiftChange.ConstituentDimID = dbo.DIM_Constituent.ConstituentDimID LEFT OUTER JOIN
+                                                                      dbo.DIM_InstallmentFrequency AS DIM_InstallmentFrequency_2 ON 
+                                                                      dbo.FACT_GiftChange.PreviousInstallmentFrequencyDimID = DIM_InstallmentFrequency_2.InstallmentFrequencyDimID LEFT OUTER JOIN
+                                                                      dbo.DIM_InstallmentFrequency AS DIM_InstallmentFrequency_1 ON 
+                                                                      dbo.FACT_GiftChange.InstallmentFrequencyDimID = DIM_InstallmentFrequency_1.InstallmentFrequencyDimID LEFT OUTER JOIN
+                                                                      dbo.DIM_Package ON dbo.FACT_GiftChange.PackageDimID = dbo.DIM_Package.PackageDimID LEFT OUTER JOIN
+                                                                      dbo.DIM_Appeal ON dbo.FACT_GiftChange.AppealDimID = dbo.DIM_Appeal.AppealDimID LEFT OUTER JOIN
+                                                                      dbo.DIM_Campaign ON dbo.FACT_GiftChange.CampaignDimID = dbo.DIM_Campaign.CampaignDimID LEFT OUTER JOIN
+                                                                      dbo.DIM_GiftCode ON dbo.DIM_GiftCode.GiftCodeDimID = dbo.FACT_Gift.GiftCodeDimID
+                                               WHERE      (dbo.FACT_Gift.GiftTypeDimID = 30)) AS sub LEFT OUTER JOIN
+                                              dbo.DIM_Appeal AS DIM_Appeal_1 ON sub.AppealIdentifier = DIM_Appeal_1.AppealIdentifier) AS OriginalView LEFT OUTER JOIN
+                      dbo.A_GM_Dashboards_KnownDescriptors ON 
+                      dbo.A_GM_Dashboards_KnownDescriptors.GM_TIEStyle_CampaignDescriptor = OriginalView.GM_TIEStyle_CampaignDescriptor LEFT OUTER JOIN
+                          (SELECT     GiftFactID, GiftCodeDimID
+                            FROM          dbo.FACT_Gift AS FACT_Gift_1
+                            WHERE      (GiftCodeDimID > - 1)) AS AllGiftCodes ON AllGiftCodes.GiftFactID = OriginalView.GiftFactID_of_the_RG LEFT OUTER JOIN
+                      dbo.DIM_GiftCode AS GCs ON GCs.GiftCodeDimID = AllGiftCodes.GiftCodeDimID
