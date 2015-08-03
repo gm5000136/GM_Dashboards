@@ -33,7 +33,8 @@ VIEW_RG_History.AppealIdentifier,
 DIM_Package.PackageCategoryDescription,
 DIM_Appeal.Product,
 dim_appeal.Audience as TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
-VIEW_RG_History.GM_TIEStyle_CampaignDescriptor
+VIEW_RG_History.GM_TIEStyle_CampaignDescriptor,
+VIEW_RG_History.GiftCodeOfTheRG --Can be (and sometimes is...) null
 into #AmendmentFacts
 from VIEW_RG_History
 inner join DIM_Date
@@ -66,7 +67,8 @@ VIEW_RG_History.AppealIdentifier,
 DIM_Package.PackageCategoryDescription,
 DIM_Appeal.Product,
 dim_appeal.Audience as TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
-VIEW_RG_History.GM_TIEStyle_CampaignDescriptor
+VIEW_RG_History.GM_TIEStyle_CampaignDescriptor,
+VIEW_RG_History.GiftCodeOfTheRG --Can be (and sometimes is...) null
 into #CancellationFacts
 from 
 VIEW_RG_History
@@ -98,7 +100,8 @@ VIEW_RG_History.AppealIdentifier,
 DIM_Package.PackageCategoryDescription,
 DIM_Appeal.Product,
 dim_appeal.Audience as TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
-VIEW_RG_History.GM_TIEStyle_CampaignDescriptor
+VIEW_RG_History.GM_TIEStyle_CampaignDescriptor,
+VIEW_RG_History.GiftCodeOfTheRG --Can be (and sometimes is...) null
 into #NewRGFacts
 from 
 VIEW_RG_History
@@ -154,15 +157,17 @@ case
 WHEN MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Development%'
 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23') then 72
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
+--A couple of steps to cover RULE 4:
 WHEN 
 	RuleNumberToApply IN (4,21)
 	And TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'Small Trusts'
 	then 75
+	when RuleNumberToApply = 4 then 50
+	when RuleNumberToApply = 21 then 39
 WHEN RuleNumberToApply = 5 Then 51 --No such thing as regular wahoo, so any would have to be shop
-WHEN RuleNumberToApply = 6 THEN 53 --Will be more complex than this in reality
---WHEN RuleNumberToApply = 7 and sub.GiftCode = 'SMS' then 55 --Will be more complex than this in reality --CANNOT DEAL WITH THIS YET SO THEY ALL GO TO DRTV FOR THE AMENDMENTS
+WHEN RuleNumberToApply = 6 THEN 54 --Will be more complex than this in reality
+WHEN RuleNumberToApply = 7 and GiftCodeOfTheRG = 'SMS' then 55
 WHEN RuleNumberToApply = 7 then 33 --Will be more complex than this in reality
-WHEN RuleNumberToApply IN (4,21) THEN 39
 when
 	RuleNumberToApply in (17,18,19) 
 	and Product = 'Direct Solicited Donations'
@@ -224,6 +229,7 @@ from
 	TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
 	n.AppealTypeForUpgradesOnly as AppealTypeFromAppealID,
 	PackageCategoryDescription,
+	GiftCodeOfTheRG,
 	SUM(n.AnnualValue) as [£]
 	from 
 	#NewRGFacts N
@@ -234,10 +240,11 @@ from
 	Product,
 	TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
 	AppealTypeForUpgradesOnly,
-	PackageCategoryDescription
+	PackageCategoryDescription,
+	GiftCodeOfTheRG
 	--order by GM_TIEStyle_CampaignDescriptor
 ) AS MainSummary
-inner join A_GM_Dashboards_KnownDescriptors
+left outer join A_GM_Dashboards_KnownDescriptors
 on A_GM_Dashboards_KnownDescriptors.GM_TIEStyle_CampaignDescriptor = MainSummary.GM_TIEStyle_CampaignDescriptor
 ) SubToGetValues
 left outer join A_GM_DashBoards_Grouping
@@ -295,15 +302,17 @@ case
 WHEN MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Development%'
 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23') then 72
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
+--A couple of steps to cover RULE 4:
 WHEN 
 	RuleNumberToApply IN (4,21)
 	And TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'Small Trusts'
 	then 75
+	when RuleNumberToApply = 4 then 50
+	when RuleNumberToApply = 21 then 39
 WHEN RuleNumberToApply = 5 Then 51 --No such thing as regular wahoo, so any would have to be shop
-WHEN RuleNumberToApply = 6 THEN 53 --Will be more complex than this in reality
---WHEN RuleNumberToApply = 7 and sub.GiftCode = 'SMS' then 55 --Will be more complex than this in reality --CANNOT DEAL WITH THIS YET SO THEY ALL GO TO DRTV FOR THE AMENDMENTS
+WHEN RuleNumberToApply = 6 THEN 54 --Will be more complex than this in reality
+WHEN RuleNumberToApply = 7 and GiftCodeOfTheRG = 'SMS' then 55
 WHEN RuleNumberToApply = 7 then 33 --Will be more complex than this in reality
-WHEN RuleNumberToApply IN (4,21) THEN 39
 when
 	RuleNumberToApply in (17,18,19) 
 	and Product = 'Direct Solicited Donations'
@@ -365,6 +374,7 @@ from
 	TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
 	AppealType as AppealTypeFromAppealID,
 	PackageCategoryDescription,
+	GiftCodeOfTheRG,
 	SUM(ChangeInAnnualisedValueFromUpgrade) as [£]
 	from 
 	#AmendmentFacts
@@ -375,7 +385,8 @@ from
 	Product,
 	TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
 	AppealType,
-	PackageCategoryDescription
+	PackageCategoryDescription,
+	GiftCodeOfTheRG
 	--order by GM_TIEStyle_CampaignDescriptor
 ) AS MainSummary
 inner join A_GM_Dashboards_KnownDescriptors
@@ -426,15 +437,17 @@ case
 WHEN MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Development%'
 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23') then 72
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
+--A couple of steps to cover RULE 4:
 WHEN 
 	RuleNumberToApply IN (4,21)
 	And TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'Small Trusts'
 	then 75
+	when RuleNumberToApply = 4 then 50
+	when RuleNumberToApply = 21 then 39
 WHEN RuleNumberToApply = 5 Then 51 --No such thing as regular wahoo, so any would have to be shop
-WHEN RuleNumberToApply = 6 THEN 53 --Will be more complex than this in reality
---WHEN RuleNumberToApply = 7 and sub.GiftCode = 'SMS' then 55 --Will be more complex than this in reality --CANNOT DEAL WITH THIS YET SO THEY ALL GO TO DRTV FOR THE AMENDMENTS
+WHEN RuleNumberToApply = 6 THEN 54 --Will be more complex than this in reality
+WHEN RuleNumberToApply = 7 and GiftCodeOfTheRG = 'SMS' then 55
 WHEN RuleNumberToApply = 7 then 33 --Will be more complex than this in reality
-WHEN RuleNumberToApply IN (4,21) THEN 39
 when
 	RuleNumberToApply in (17,18,19) 
 	and Product = 'Direct Solicited Donations'
@@ -496,6 +509,7 @@ from
 	TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
 	c.AppealTypeForUpgradesOnly as AppealTypeFromAppealID,
 	PackageCategoryDescription,
+	GiftCodeOfTheRG,
 	SUM(c.ValueCancelled) as [£]
 	from 
 	#CancellationFacts C
@@ -506,7 +520,8 @@ from
 	Product,
 	TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
 	AppealTypeForUpgradesOnly,
-	PackageCategoryDescription
+	PackageCategoryDescription,
+	GiftCodeOfTheRG
 	--order by GM_TIEStyle_CampaignDescriptor
 ) AS MainSummary
 inner join A_GM_Dashboards_KnownDescriptors
@@ -907,45 +922,12 @@ Description
 
 
 
---Targets: doing two separate ways for now, can combine later
+--Targets
 
---Target Comparison 1 - month by month with no YTD aspect
-
-/* commented out since forms part of below combined one
-select 
-R.*,
-case 
-	when r.CalendarYearMonth = (select CalendarYearMonth from DIM_Date where IsCurrentDate = 1) then 1 else 0 
-end as IsCurrentMonth,
-case 
-	when r.CalendarYearMonth > (select CalendarYearMonth from DIM_Date where IsCurrentDate = 1) then 1 else 0 
-end as IsFUTUREMonth,
-Target,
-r.[£] - Target AS [Over(Under)Target],
-case 
-	when Target is null Or Target = 0 then null 
-	when [£] IS null Or [£] = 0 then null
-	else 100*(r.[£] - Target) / Target 
-end as [%Over(Under)Target]
-from 
-#MainResultsTable R
-full outer join
-A_GM_Dashboards_Targets T 
-on t.CalendarYearMonth = r.CalendarYearMonth
-and t.ID = r.ID
-and t.Type = r.Type
-where r.CalendarYearMonth
->=
-(
-select min(calendaryearmonth) as EarliestTargetSet
-from A_GM_Dashboards_Targets
-)
-*/
-
-
---Target comparison 2 - This is a 'current' YTD (i.e. not including YTD as at end of every month...) only not looking at current month for now (though we could? Or base on % of days that have passed - not really as fair as it sounds?) - I used CTE but that's not necessarily best (CTE is literally the above monthly version). Based on existing table and temp table so is not slow
+--Target comparison - This includes a 'current' YTD (i.e. not including YTD as at end of every month, and ONLY WORKING IT OUT FOR THE CURRENT YEAR AT PRESENT...) only not looking at current month for now (though we could? Or base on % of days that have passed - not really as fair as it sounds?) - I used CTE at first (first temp table) but it was not effective
 --naturally keeps out booked future gifts which are always mistakes says Ado
 ;
+
 select 
 R.*,
 case 
@@ -954,6 +936,9 @@ end as IsCurrentMonth,
 case 
 	when r.CalendarYearMonth > (select CalendarYearMonth from DIM_Date where IsCurrentDate = 1) then 1 else 0 
 end as IsFUTUREMonth,
+case 
+    when r.CalendarYearMonth IN (select CalendarYearMonth from DIM_Date where IsCurrentFiscalYear = 1) then 1 else 0
+    end as IsInCurrentFY,
 Target,
 r.[£] - Target AS [Over(Under)Target],
 case 
@@ -988,6 +973,61 @@ from A_GM_Dashboards_Targets
 )
 )
 ;
+--this stage inserts into above temp table a row with 0 for any subsequent month in the current year (up to and including the current month!) where a gift has been made. This is because otherwise the YTD was not carrying across where there was money received in an earlier month but not in a later one. I THINK this was only an issue where target was null as above script coped with ones that did have targets!
+insert into #MonthlyActualsWorking
+select
+SubToFindMissingRows.[Type],
+SubToFindMissingRows.CalendarYearMonth,
+SubToFindMissingRows.ID,
+d.FormsPartOf,
+d.Level,
+d.Description,
+0 as [£],
+case 
+	when SubToFindMissingRows.CalendarYearMonth = (select CalendarYearMonth from DIM_Date where IsCurrentDate = 1) then 1 else 0 
+end as IsCurrentMonth,
+case 
+	when SubToFindMissingRows.CalendarYearMonth > (select CalendarYearMonth from DIM_Date where IsCurrentDate = 1) then 1 else 0 
+end as IsFUTUREMonth,
+case 
+    when SubToFindMissingRows.CalendarYearMonth IN (select CalendarYearMonth from DIM_Date where IsCurrentFiscalYear = 1) then 1 else 0
+    end as IsInCurrentFY,
+NULL as [Target],
+NULL AS [Over(Under)Target],
+NULL as [%Over(Under)Target]
+from
+(
+select * from
+(
+select distinct
+--PrimaryKeyWithValues.FiscalYear,
+AllPastMonths.CalendarYearMonth,
+PrimaryKeyWithValues.Type,
+PrimaryKeyWithValues.ID
+--0 as [£]
+from
+(select distinct d.FiscalYear,m.CalendarYearMonth,m.type,m.ID,m.[£]
+ from #MonthlyActualsWorking m inner join DIM_Date d on d.CalendarYearMonth = m.CalendarYearMonth)
+PrimaryKeyWithValues
+inner join
+(select distinct FiscalYear,CalendarYearMonth from DIM_Date
+where MonthsSince >-1)
+AllPastMonths
+on PrimaryKeyWithValues.FiscalYear = AllPastMonths.FiscalYear
+) sub
+except
+select
+CalendarYearMonth,
+Type,
+ID
+from #MonthlyActualsWorking
+) SubToFindMissingRows
+left outer join A_GM_DashBoards_Grouping d on d.ID = SubToFindMissingRows.ID
+
+
+
+
+
 
 --this stage is just to make YTD targets for those with 0 income
 --it then gets used after the join below
