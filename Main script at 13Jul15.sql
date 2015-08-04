@@ -924,6 +924,48 @@ Description
 
 --Targets
 
+--this stage inserts into ##MainResultsTable with actual of 0 for any subsequent month in the current year (up to and including the current month!) where a gift has been made. This is because otherwise the YTD was not carrying across where there was money received in an earlier month but not in a later one, and also a related problem of targets not being found during the creation of #MonthlyActualsWorking where there was no actual for given month. 
+insert into #MainResultsTable
+select
+SubToFindMissingRows.[Type],
+SubToFindMissingRows.CalendarYearMonth,
+SubToFindMissingRows.ID,
+d.FormsPartOf,
+d.Level,
+d.Description,
+0 as [£]
+from
+(
+select * from
+(
+select distinct
+--PrimaryKeyWithValues.FiscalYear,
+AllPastMonths.CalendarYearMonth,
+PrimaryKeyWithValues.Type,
+PrimaryKeyWithValues.ID
+--0 as [£]
+from
+(select distinct d.FiscalYear,m.CalendarYearMonth,m.type,m.ID,m.[£]
+ from #MainResultsTable m inner join DIM_Date d on d.CalendarYearMonth = m.CalendarYearMonth)
+PrimaryKeyWithValues
+inner join
+(select distinct FiscalYear,CalendarYearMonth from DIM_Date
+where MonthsSince >-1)
+AllPastMonths
+on PrimaryKeyWithValues.FiscalYear = AllPastMonths.FiscalYear
+) sub
+except
+select
+CalendarYearMonth,
+Type,
+ID
+from #MainResultsTable
+) SubToFindMissingRows
+left outer join A_GM_DashBoards_Grouping d on d.ID = SubToFindMissingRows.ID
+
+;
+
+
 --Target comparison - This includes a 'current' YTD (i.e. not including YTD as at end of every month, and ONLY WORKING IT OUT FOR THE CURRENT YEAR AT PRESENT...) only not looking at current month for now (though we could? Or base on % of days that have passed - not really as fair as it sounds?) - I used CTE at first (first temp table) but it was not effective
 --naturally keeps out booked future gifts which are always mistakes says Ado
 ;
@@ -940,7 +982,10 @@ case
     when r.CalendarYearMonth IN (select CalendarYearMonth from DIM_Date where IsCurrentFiscalYear = 1) then 1 else 0
     end as IsInCurrentFY,
 Target,
-r.[£] - Target AS [Over(Under)Target],
+--next two lines now compare values with no target to zero to give an accurate 'over/under' sum 
+--BUT target field itself still remains null, so where a target was deliberately zero for given month, we know this
+case when Target IS NULL then r.[£] - 0
+else r.[£] - Target end AS [Over(Under)Target],
 case 
 	when Target is null Or Target = 0 then null 
 	when [£] IS null Or [£] = 0 then null
@@ -973,61 +1018,6 @@ from A_GM_Dashboards_Targets
 )
 )
 ;
---this stage inserts into above temp table a row with 0 for any subsequent month in the current year (up to and including the current month!) where a gift has been made. This is because otherwise the YTD was not carrying across where there was money received in an earlier month but not in a later one. I THINK this was only an issue where target was null as above script coped with ones that did have targets!
-insert into #MonthlyActualsWorking
-select
-SubToFindMissingRows.[Type],
-SubToFindMissingRows.CalendarYearMonth,
-SubToFindMissingRows.ID,
-d.FormsPartOf,
-d.Level,
-d.Description,
-0 as [£],
-case 
-	when SubToFindMissingRows.CalendarYearMonth = (select CalendarYearMonth from DIM_Date where IsCurrentDate = 1) then 1 else 0 
-end as IsCurrentMonth,
-case 
-	when SubToFindMissingRows.CalendarYearMonth > (select CalendarYearMonth from DIM_Date where IsCurrentDate = 1) then 1 else 0 
-end as IsFUTUREMonth,
-case 
-    when SubToFindMissingRows.CalendarYearMonth IN (select CalendarYearMonth from DIM_Date where IsCurrentFiscalYear = 1) then 1 else 0
-    end as IsInCurrentFY,
-NULL as [Target],
-NULL AS [Over(Under)Target],
-NULL as [%Over(Under)Target]
-from
-(
-select * from
-(
-select distinct
---PrimaryKeyWithValues.FiscalYear,
-AllPastMonths.CalendarYearMonth,
-PrimaryKeyWithValues.Type,
-PrimaryKeyWithValues.ID
---0 as [£]
-from
-(select distinct d.FiscalYear,m.CalendarYearMonth,m.type,m.ID,m.[£]
- from #MonthlyActualsWorking m inner join DIM_Date d on d.CalendarYearMonth = m.CalendarYearMonth)
-PrimaryKeyWithValues
-inner join
-(select distinct FiscalYear,CalendarYearMonth from DIM_Date
-where MonthsSince >-1)
-AllPastMonths
-on PrimaryKeyWithValues.FiscalYear = AllPastMonths.FiscalYear
-) sub
-except
-select
-CalendarYearMonth,
-Type,
-ID
-from #MonthlyActualsWorking
-) SubToFindMissingRows
-left outer join A_GM_DashBoards_Grouping d on d.ID = SubToFindMissingRows.ID
-
-
-
-
-
 
 --this stage is just to make YTD targets for those with 0 income
 --it then gets used after the join below
@@ -1069,10 +1059,12 @@ from
 ) MainWorkings
 where MainWorkings.CalendarYearMonth in
 (select distinct calendaryearmonth from DIM_Date where IsCurrentFiscalYear = 1
-and MonthsSince > 0)
+and MonthsSince > -1)
 group by Type,ID
 
 ;
+
+--main final comparison
 
 select 
 AllWorkingExceptSorting.*,
@@ -1090,7 +1082,10 @@ from
 (
 select
 InitialSummary.*,
-YTDActual - YTDTarget AS [YTD_Over(Under)Target],
+--next two lines now compare values with no target to zero to give an accurate 'over/under' sum 
+--BUT target field itself still remains null, so where a target was deliberately zero for given month, we know this
+case when YTDTarget IS NULL then YTDActual - 0
+else YTDActual - YTDTarget END AS [YTD_Over(Under)Target],
 case 
 	when YTDTarget is null Or YTDTarget = 0 then null 
 	when YTDActual IS null Or YTDActual = 0 then null
@@ -1259,3 +1254,33 @@ FormsPartOf,
 Level,
 Description
 */
+
+drop table A_GM_Dashboards_FullResultsForLongTermTrends
+;
+select * into A_GM_Dashboards_FullResultsForLongTermTrends
+from
+(
+select 
+GETDATE() as DateStored,
+r.*,
+d.FiscalYear,
+RIGHT(r.CalendarYearMonth,2) as CalendarMonthNumber,
+DaysSinceMonthEnd.DaysSinceMonthEnd,
+ROW_NUMBER()
+over (partition by Type,ID
+order by r.CalendarYearMonth) as Sequence
+
+from
+#MainResultsTable r
+inner join 
+(select distinct CalendarYearMonth,FiscalYear from DIM_Date) d 
+on d.CalendarYearMonth = r.CalendarYearMonth
+inner join 
+(select calendaryearmonth,min(dayssince) as DaysSinceMonthEnd
+from DIM_Date
+group by calendaryearmonth) DaysSinceMonthEnd
+on DaysSinceMonthEnd.CalendarYearMonth = r.CalendarYearMonth
+--limiting to this so that we do not risk using significantly incomplete information
+) Main
+where DaysSinceMonthEnd > 15
+and [Type] <> 'ActualReceivedRGIncome' --this would be useful but is currently calculated on currentFY to define cold, would need to revisit
