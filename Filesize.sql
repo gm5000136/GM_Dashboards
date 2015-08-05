@@ -186,40 +186,45 @@ select distinct DIM_Constituent.ConstituentID from #StatusOfEachPersonEachMonth
 inner join DIM_Constituent on DIM_Constituent.ConstituentID = #StatusOfEachPersonEachMonth.ConstituentID
 where KeyIndicator = 'O'
 )
+--35 Changing status of people to 'Deceased...' where they became deceased as far as we know during or before the month in question
+--Allows field to be longer so update can work - this way we keep track of who was deceased but would otherwise have counted
+alter table #StatusOfEachPersonEachMonth
+alter column GiverCategory varchar(41)
+;
 
-
-/* this approach failed
-select
-l.constituentID,
-l.CalendarYearMonth,
-case 
-when 
-r.ConstituentID is not null and c.ConstituentID  is not null 
-and l.CalendarYearMonth = r.CalendarYearMonth
-then 'ActiveCoG and ActiveCash'
-when r.ConstituentID  is not null  
-and l.CalendarYearMonth = r.CalendarYearMonth
-then 'ActiveCoG only'
-when c.ConstituentID  is not null
-and l.CalendarYearMonth = c.CalendarYearMonth
-then 'ActiveCash only'
-end as Category
-into #StatusOfEachPersonEachMonth
+--this update takes only just over a minute!
+update #StatusOfEachPersonEachMonth
+set GiverCategory = 'Deceased - was '+ [All].GiverCategory
+from
+#StatusOfEachPersonEachMonth [All]
+inner join
+(
+select s.* from #StatusOfEachPersonEachMonth s
+inner join
+(
+select 
+constituentID,
+min(CalendarYearMonth) as MonthDeceased
 from
 (
-select constituentid,CalendarYearMonth from #RegularGiftDetails
-union
-select constituentid,CalendarYearMonth from #IndividualCashResults
-) l
-left outer join 
-#RegularGiftDetails r 
-on r.constituentID = l.constituentid
-and r.CalendarYearMonth = l.CalendarYearMonth
-left outer join 
-#IndividualCashResults c on c.constituentID = l.constituentid
-and c.CalendarYearMonth = l.CalendarYearMonth
-*/
-
+select
+ConstituentID, 
+case when DeceasedDate is null then DateChanged else DeceasedDate end as BestDeceasedDateWeHave
+from
+(
+select 
+ConstituentID,DeceasedDate,DateChanged
+from DIM_Constituent
+where IsDeceased = 'Yes' and KeyIndicator = 'I'
+) sub
+) main inner join DIM_Date on DIM_Date.ActualDate > main.BestDeceasedDateWeHave and dim_date.DaysSince>0
+group by ConstituentID
+) d
+on s.ConstituentID = d.ConstituentID
+and s.CalendarYearMonth >= d.MonthDeceased 
+) [DeceasedRows]
+on [All].ConstituentID = [DeceasedRows].ConstituentID
+and [All].CalendarYearMonth = [DeceasedRows].CalendarYearMonth
 ;
 
 --40 Producing counts and sums of amounts for each month ever
@@ -277,25 +282,12 @@ left outer join
 #StatusOfEachPersonEachMonth s on s.ConstituentID = sub_giving.ConstituentID
 and s.CalendarYearMonth = sub_giving.CalendarYearMonth
 ) sub_individualtotal
+where CalendarYearMonth < (select MIN(CalendarYearMonth) from dim_date where monthssince = 0)
 group by
 GiverCategory,
 GiftType,
 CalendarYearMonth
 order by CalendarYearMonth,GiverCategory,GiftType
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 /*
