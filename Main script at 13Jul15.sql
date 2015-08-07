@@ -133,6 +133,257 @@ and calendaryearmonth = 201504
 --it INCLUDES ALL REGULAR GIVING REGARDLESS OF PAYMENT TYPE!
 
 
+--prestep 5
+--initial work to summarise all events signups
+--this includes adding them (in slightly more detail) to own table [A_GM_DashBoards_EventSignUpsFullerInfo]
+--essentially, this is carrying out rules to define which event action relates to which ID, rules which are NOT
+--written in the TowardsHierarchy spreadsheet
+--this prestep is longish: it doesn't finish till we get to 'step 1'!
+
+--variable for 'first ever action there's ever been' - maybe uneccessary but I've left it in 
+declare @monthoffirsteveraction int
+set @monthoffirsteveraction = (select MIN(calendaryearmonth) from DIM_Date where DateDimID in (select ActionDateDimID from FACT_Action))
+;
+select sub.[Year of event],sub.[Signup month - based on when added to RE],sub.AttributeDescription as [Event Name],[RegistrationType],EventType,FundraisingPlatform,ActionType,[Date of event],COUNT(constituentID) as [SignupsInMonth]
+into #EventSignUpFullList
+		from  
+		(  
+		SELECT     TOP (100) PERCENT DIM_Constituent.ConstituentID, A_GM_ActionExtraInfo.[Action Date Added] AS [Signup date - based on when added to RE],   
+		                      DIM_Date.CalendarYearMonth AS [Signup month - based on when added to RE], FACT_Action.ActionDateDimID AS [Date of event],   
+		                      DIM_Date_1.CalendarYear AS [Year of event], FACT_ActionAttribute.AttributeDescription, DIM_ActionStatus.Description AS ActionStatus,   
+		                      DIM_ActionType.Description AS ActionType, 
+		                      case when RegistrationTypes.AttributeDescription is null then 'Neither' else RegistrationTypes.AttributeDescription end as RegistrationType,  
+		                      case when eventtype.AttributeDescription is null then 'Other' else eventtype.AttributeDescription end as EventType,
+		                      CASe when FundraisingPlatforms.AttributeDescription is null then '' else FundraisingPlatforms.AttributeDescription end as FundraisingPlatform
+		FROM         FACT_Action INNER JOIN  
+		                      FACT_ActionAttribute ON FACT_Action.ActionFactID = FACT_ActionAttribute.ActionFactID INNER JOIN  
+		                      A_GM_ActionExtraInfo ON FACT_Action.ActionSystemID = A_GM_ActionExtraInfo.[Action System Record ID] INNER JOIN  
+		                      DIM_ActionStatus ON FACT_Action.ActionStatusDimID = DIM_ActionStatus.ActionStatusDimID INNER JOIN  
+		                      DIM_Constituent ON FACT_Action.ConstituentDimID = DIM_Constituent.ConstituentDimID INNER JOIN  
+		                      DIM_ActionType ON FACT_Action.ActionTypeDimID = DIM_ActionType.ActionTypeDimID INNER JOIN  
+		                      DIM_Date ON A_GM_ActionExtraInfo.[Action Date Added] = DIM_Date.ActualDate INNER JOIN  
+		                      DIM_Date AS DIM_Date_1 ON FACT_Action.ActionDateDimID = DIM_Date_1.DateDimID  
+		left outer join   
+		( 
+		SELECT     FACT_Action.ActionFactID, FACT_ActionAttribute.AttributeDescription  
+		FROM         FACT_Action  
+		INNER JOIN  
+		FACT_ActionAttribute ON FACT_Action.ActionFactID = FACT_ActionAttribute.ActionFactID  
+		WHERE    (FACT_ActionAttribute.AttributeCategory = 'Event Registration Type')  
+		) as RegistrationTypes on FACT_Action.ActionFactID = RegistrationTypes.ActionFactID 
+		left outer join   
+		( 
+		SELECT     FACT_Action.ActionFactID, FACT_ActionAttribute.AttributeDescription  
+		FROM         FACT_Action  
+		INNER JOIN  
+		FACT_ActionAttribute ON FACT_Action.ActionFactID = FACT_ActionAttribute.ActionFactID  
+		WHERE     (FACT_ActionAttribute.AttributeCategory = 'Event Category')  
+		) as EventType on FACT_Action.ActionFactID = EventType.ActionFactID 
+		left outer join
+		(
+		SELECT     FACT_Action.ActionFactID, FACT_ActionAttribute.AttributeCategory,FACT_ActionAttribute.AttributeDescription  
+		FROM         FACT_Action  
+		inner JOIN  
+		FACT_ActionAttribute ON FACT_Action.ActionFactID = FACT_ActionAttribute.ActionFactID  
+		WHERE     (FACT_ActionAttribute.AttributeCategory = 'Fundraising Platform Used')  
+		) as FundraisingPlatforms on FundraisingPlatforms.ActionFactID = FACT_Action.ActionFactID
+		WHERE      
+		(FACT_ActionAttribute.AttributeCategory = 'Event Name') AND (DIM_ActionStatus.Description IN ('Participating', 'Accepted', 'Participated', 'Pending Approval',   
+		                      'Day of event')) AND (DIM_ActionType.Description LIKE '%FR Event - %') AND (FACT_ActionAttribute.AttributeDescription IS NOT NULL) AND (DIM_Date.MonthsSince >-1)  
+		) as sub  
+		where [Signup month - based on when added to RE] >= @monthoffirsteveraction 
+		group by [Year of event],[Signup month - based on when added to RE], AttributeDescription,[RegistrationType],[EventType],FundraisingPlatform,ActionType,[Date of event]
+		order by [Year of event],[Event Name],[Signup month - based on when added to RE] asc 
+;
+
+--EventSignUps are created here, populated to A_GM_DashBoards_EventSignUpsFullerInfo
+--Short table so just dropping and replacing rather than anything more standard
+--THEN usual facts are taken from that table into the select
+drop table A_GM_DashBoards_EventSignUpsFullerInfo
+;
+SELECT 
+Type,
+d.CalendarYearMonth,
+subtosum.ID,
+subtosum.FormsPartOf,
+subtosum.Level,
+A_GM_DashBoards_Grouping.Description,
+[Event Name],
+SUM([£]) as [£],
+d.CalendarYear,
+d.FiscalYear,
+d.CalendarMonthName,
+d.MonthsSince
+into A_GM_DashBoards_EventSignUpsFullerInfo
+FROM
+(
+select
+'SignUpsDuringMonth' as Type,
+[Signup month - based on when added to RE] as CalendarYearMonth,
+case
+when
+EventType = 'Peer to peer event'
+AND
+ActionType 
+in
+(
+'FR Event - Adrenaline',
+'FR Event - Climbing',
+'FR Event - Cycling',
+'FR Event - Half Marathon',
+'FR Event - Marathon',
+'FR Event - Multi-discipline Event',
+'FR Event - Obstacle',
+'FR Event - Other Running',
+'FR Event - Walking',
+'FR Event - Water Related'
+) then 84 --p2p challenge
+when
+EventType = 'Peer to peer event'
+AND ActionType 
+in
+(
+'FR Event - Music/Dancing',
+'FR Event - Dinner', -- has never been one that is also p2p!
+'FR Event - Food and Drink'
+) then 85 --p2p social fundraising
+when
+EventType = 'Peer to peer event'
+AND ActionType 
+in
+(
+'FR Event - Celebration'
+) then 86 --p2p celebration
+when
+EventType = 'Peer to peer event'
+then 87
+when EventType = 'WaterAid Mass Participation Event' then 88 --all with this event type regardless of anything else
+when 
+ActionType 
+in
+(
+'FR Event - Adrenaline',
+'FR Event - Climbing',
+'FR Event - Cycling',
+'FR Event - Half Marathon',
+'FR Event - Marathon',
+'FR Event - Multi-discipline Event',
+'FR Event - Obstacle',
+'FR Event - Other Running',
+'FR Event - Walking',
+'FR Event - Water Related'
+) then 25 --any remaining active-sounding event!
+else 27 --everything remaining, ones we'd actually had as at 7Aug15 were as below 
+--(some of these will have been separated out above IF they are peer-to-peer event)
+--FR Event - Appeal Fundraising
+--FR Event - Celebration
+--FR Event - Food and Drink
+--FR Event - In Memory
+--FR Event - Just Water
+--FR Event - Miscellaneous Event
+--FR Event - Music/Dancing
+--FR Event - Online Page Unknown
+end as ID, 
+case 
+when EventType = 'Peer to peer event' then 24 --P2P
+else 13 --everything that is not peer-to-peer
+end as FormsPartOf, 
+8 as Level,
+--Description is taken from the join with dashboard list
+#EventSignUpFullList.[Event Name],
+[SignupsInMonth] as [£]
+from
+#EventSignUpFullList
+) subtosum
+left outer join A_GM_DashBoards_Grouping
+on subtosum.ID = A_GM_DashBoards_Grouping.id
+inner join --finding myself having to do this a lot to avoid multiplying by every day in each month!
+(select distinct 
+CalendarYearMonth,
+CalendarYear,
+FiscalYear,
+CalendarMonthName,
+MonthsSince
+from DIM_Date) d on d.CalendarYearMonth = subtosum.CalendarYearMonth
+group by 
+Type,
+d.CalendarYearMonth,
+subtosum.ID,
+subtosum.FormsPartOf,
+subtosum.Level,
+A_GM_DashBoards_Grouping.Description,
+[Event Name],
+d.CalendarYear,
+d.FiscalYear,
+d.CalendarMonthName,
+d.MonthsSince
+;
+--name column more intuitively
+exec sp_rename 'A_GM_DashBoards_EventSignUpsFullerInfo.[£]','Count','COLUMN'
+;
+--insert into that table a row with count 0 for every month since an action happened
+--except those that are actually in the real table
+--this makes YTD and other counts adds up
+--in future we'd do dimensionally somehow (this is 'recording what didn't happen')
+insert into A_GM_DashBoards_EventSignUpsFullerInfo
+select distinct
+[Type],
+d.[CalendarYearMonth],
+[ID],
+[FormsPartOf],
+[Level],
+[Description],
+[Event Name],
+[Count],
+d.[CalendarYear],
+d.[FiscalYear],
+d.[CalendarMonthName],
+d.[MonthsSince]
+from
+
+(
+SELECT distinct
+       t1.[Type]
+      ,d.[CalendarYearMonth]
+      ,t1.[ID]
+      ,t1.[FormsPartOf]
+      ,t1.[Level]
+      ,t1.[Description]
+      ,t1.[Event Name]
+      ,0 as [Count]
+      /* get these from date
+      ,t1.[CalendarYear]
+      ,t1.[FiscalYear]
+      ,t1.[CalendarMonthName]
+      ,t1.[MonthsSince]
+      */
+  FROM A_GM_DashBoards_EventSignUpsFullerInfo t1
+ right outer join 
+ (
+ select distinct calendaryearmonth from DIM_Date
+ where MonthsSince > 0
+ ) d on d.CalendarYearMonth >= t1.CalendarYearMonth
+except select 
+       [Type]
+      ,[CalendarYearMonth]
+      ,[ID]
+      ,[FormsPartOf]
+      ,[Level]
+      ,[Description]
+      ,[Event Name]
+      ,0 as [DummyCount]
+from A_GM_DashBoards_EventSignUpsFullerInfo
+) FindingEveryZeroRow
+inner join DIM_Date d on d.CalendarYearMonth = FindingEveryZeroRow.CalendarYearMonth
+where type is not null
+/* for checking
+and
+[Event Name] = 'London Marathon'
+and CalendarYearMonth > 201412
+*/
+;
+
+
 
 --step 1: new annualised value of regular gifts for each ID and each month
 
@@ -143,7 +394,7 @@ SubToGetValues.ID,
 FormsPartOf,
 Level,
 Description,
-SUM([£]) as [£]
+SUM([Total]) as [Total]
 
 into #MainResultsTable
 
@@ -219,7 +470,7 @@ when RuleNumberToApply = 24 then 49
 WHEN RuleNumberToApply = 26 THEN 53 --Will be more complex than this in reality
 else 999
 end as ID,
-[£]
+[Total]
 from
 (
 	select
@@ -230,7 +481,7 @@ from
 	n.AppealTypeForUpgradesOnly as AppealTypeFromAppealID,
 	PackageCategoryDescription,
 	GiftCodeOfTheRG,
-	SUM(n.AnnualValue) as [£]
+	SUM(n.AnnualValue) as [Total]
 	from 
 	#NewRGFacts N
 	--where n.CalendarYearMonth > 201503
@@ -267,7 +518,7 @@ ID,
 FormsPartOf,
 Level,
 Description,
-SUM(VIEW_RG_History.ChangeInAnnualisedAmount) as [£]
+SUM(VIEW_RG_History.ChangeInAnnualisedAmount) as [Total]
 from VIEW_RG_History 
 left outer join A_GM_DashBoards_Grouping
 on A_GM_DashBoards_Grouping.ID = VIEW_RG_History.DashGroup
@@ -291,7 +542,7 @@ SubToGetValues.ID,
 FormsPartOf,
 Level,
 Description,
-SUM([£]) as [£]
+SUM([Total]) as [Total]
 from
 (
 select
@@ -364,7 +615,7 @@ when RuleNumberToApply = 24 then 49
 WHEN RuleNumberToApply = 26 THEN 53 --Will be more complex than this in reality
 else 999
 end as ID,
-[£]
+[Total]
 from
 (
 	select
@@ -375,7 +626,7 @@ from
 	AppealType as AppealTypeFromAppealID,
 	PackageCategoryDescription,
 	GiftCodeOfTheRG,
-	SUM(ChangeInAnnualisedValueFromUpgrade) as [£]
+	SUM(ChangeInAnnualisedValueFromUpgrade) as [Total]
 	from 
 	#AmendmentFacts
 	--where calendaryearmonth_of_amendment > 201503
@@ -426,7 +677,7 @@ SubToGetValues.ID,
 FormsPartOf,
 Level,
 Description,
-SUM([£]) as [£]
+SUM([Total]) as [Total]
 from
 (
 select
@@ -499,7 +750,7 @@ when RuleNumberToApply = 24 then 49
 WHEN RuleNumberToApply = 26 THEN 53 --Will be more complex than this in reality
 else 999
 end as ID,
-[£]
+[Total]
 from
 (
 	select
@@ -510,7 +761,7 @@ from
 	c.AppealTypeForUpgradesOnly as AppealTypeFromAppealID,
 	PackageCategoryDescription,
 	GiftCodeOfTheRG,
-	SUM(c.ValueCancelled) as [£]
+	SUM(c.ValueCancelled) as [Total]
 	from 
 	#CancellationFacts C
 	--where c.CalendarYearMonth > 201503
@@ -569,7 +820,7 @@ ID,
 FormsPartOf,
 Level,
 Description,
--1*(SUM(VIEW_RG_History.ChangeInAnnualisedAmount)) as [£]
+-1*(SUM(VIEW_RG_History.ChangeInAnnualisedAmount)) as [Total]
 from 
 VIEW_RG_History
 left outer join A_GM_DashBoards_Grouping
@@ -595,7 +846,7 @@ ID,
 FormsPartOf,
 Level,
 Description,
-SUM([£]) as [£]
+SUM([Total]) as [Total]
 from
 (
 select
@@ -736,7 +987,7 @@ WHEN RuleNumberToApply = 26 THEN 53 --Will be more complex than this in reality
 ELSE 999 END AS DashGroup,
 DIM_Date.CalendarYearMonth,
 sub.GM_TIEStyle_CampaignDescriptor,
-Amount as [£]
+Amount as [Total]
 from
 
 (
@@ -847,7 +1098,7 @@ rgsummary.ID,
 FormsPartOf,
 Level,
 Description,
-SUM([£]) as [£]
+SUM([Total]) as [Total]
 from
 (
 select
@@ -884,7 +1135,7 @@ when BeforeOrAfterApril = 'Gift started before this financial year' and PaymentT
 when BeforeOrAfterApril = 'Gift started during this financial year' and PaymentType = 'Direct Debit' then 80 --rule R33
 when BeforeOrAfterApril = 'Gift started during this financial year' and PaymentType <> 'Direct Debit' then 81 --rule R34
 end as ID,
-Value as [£]
+Value as [Total]
 from
 (
 	select *
@@ -902,23 +1153,31 @@ FormsPartOf,
 Level,
 Description
 
+union all
+
+--step 6 - all event sign ups, these come from all the work in prestep 6 (in fact a physical table recreated then)
+
+select
+Type,
+CalendarYearMonth,
+ID,
+FormsPartOf,
+Level,
+Description,
+SUM(COUNT) as [Total]
+from A_GM_DashBoards_EventSignUpsFullerInfo
+group by 
+Type,
+CalendarYearMonth,
+ID,
+FormsPartOf,
+Level,
+Description
 
 
 
 
---step 6 for now as helping to work out what to do with them - every single other gift type not already covered
-
-
-
-
-
-
-
-
-
-
-
-
+--step x for now as helping to work out what to do with them - every single other gift type not already covered
 
 
 
@@ -933,7 +1192,7 @@ SubToFindMissingRows.ID,
 d.FormsPartOf,
 d.Level,
 d.Description,
-0 as [£]
+0 as [Total]
 from
 (
 select * from
@@ -943,9 +1202,9 @@ select distinct
 AllPastMonths.CalendarYearMonth,
 PrimaryKeyWithValues.Type,
 PrimaryKeyWithValues.ID
---0 as [£]
+--0 as [Total]
 from
-(select distinct d.FiscalYear,m.CalendarYearMonth,m.type,m.ID,m.[£]
+(select distinct d.FiscalYear,m.CalendarYearMonth,m.type,m.ID,m.[Total]
  from #MainResultsTable m inner join DIM_Date d on d.CalendarYearMonth = m.CalendarYearMonth)
 PrimaryKeyWithValues
 inner join
@@ -984,12 +1243,12 @@ case
 Target,
 --next two lines now compare values with no target to zero to give an accurate 'over/under' sum 
 --BUT target field itself still remains null, so where a target was deliberately zero for given month, we know this
-case when Target IS NULL then r.[£] - 0
-else r.[£] - Target end AS [Over(Under)Target],
+case when Target IS NULL then r.[Total] - 0
+else r.[Total] - Target end AS [Over(Under)Target],
 case 
 	when Target is null Or Target = 0 then null 
-	when [£] IS null Or [£] = 0 then null
-	else 100*(r.[£] - Target) / Target 
+	when [Total] IS null Or [Total] = 0 then null
+	else 100*(r.[Total] - Target) / Target 
 end as [%Over(Under)Target]
 into #MonthlyActualsWorking
 from 
@@ -1074,7 +1333,7 @@ m.Level,
 m.Description,
 m.IsCurrentMonth,
 m.IsFUTUREMonth,
-m.[£] as MonthActual,
+m.[Total] as MonthActual,
 m.Target,
 m.[Over(Under)Target],
 m.[%Over(Under)Target]
@@ -1096,7 +1355,7 @@ from
 select
 M.Type,
 m.ID,
-SUM([£]) as YTDActual,
+SUM([Total]) as YTDActual,
 SUM(Target) as YTDTarget
 from #MonthlyActualsWorking M
 where calendaryearmonth
@@ -1238,7 +1497,7 @@ ID,
 FormsPartOf,
 Level,
 Description,
-SUM([£]) as [£]
+SUM([Total]) as [Total]
 from #MainResultsTable
 inner join
 (
