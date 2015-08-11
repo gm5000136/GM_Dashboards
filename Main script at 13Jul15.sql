@@ -138,11 +138,8 @@ and calendaryearmonth = 201504
 --this includes adding them (in slightly more detail) to own table [A_GM_DashBoards_EventSignUpsFullerInfo]
 --essentially, this is carrying out rules to define which event action relates to which ID, rules which are NOT
 --written in the TowardsHierarchy spreadsheet
---this prestep is longish: it doesn't finish till we get to 'step 1'!
+--this prestep is longish: it doesn't finish till we get to 'prestep 6'!
 
---variable for 'first ever action there's ever been' - maybe uneccessary but I've left it in 
-declare @monthoffirsteveraction int
-set @monthoffirsteveraction = (select MIN(calendaryearmonth) from DIM_Date where DateDimID in (select ActionDateDimID from FACT_Action))
 ;
 select sub.[Year of event],sub.[Signup month - based on when added to RE],sub.AttributeDescription as [Event Name],[RegistrationType],EventType,FundraisingPlatform,ActionType,[Date of event],COUNT(constituentID) as [SignupsInMonth]
 into #EventSignUpFullList
@@ -190,8 +187,7 @@ into #EventSignUpFullList
 		WHERE      
 		(FACT_ActionAttribute.AttributeCategory = 'Event Name') AND (DIM_ActionStatus.Description IN ('Participating', 'Accepted', 'Participated', 'Pending Approval',   
 		                      'Day of event')) AND (DIM_ActionType.Description LIKE '%FR Event - %') AND (FACT_ActionAttribute.AttributeDescription IS NOT NULL) AND (DIM_Date.MonthsSince >-1)  
-		) as sub  
-		where [Signup month - based on when added to RE] >= @monthoffirsteveraction 
+		) as sub
 		group by [Year of event],[Signup month - based on when added to RE], AttributeDescription,[RegistrationType],[EventType],FundraisingPlatform,ActionType,[Date of event]
 		order by [Year of event],[Event Name],[Signup month - based on when added to RE] asc 
 ;
@@ -209,7 +205,7 @@ subtosum.FormsPartOf,
 subtosum.Level,
 A_GM_DashBoards_Grouping.Description,
 [Event Name],
-SUM([£]) as [£],
+SUM([Count]) as [Count],
 d.CalendarYear,
 d.FiscalYear,
 d.CalendarMonthName,
@@ -291,7 +287,8 @@ end as FormsPartOf,
 8 as Level,
 --Description is taken from the join with dashboard list
 #EventSignUpFullList.[Event Name],
-[SignupsInMonth] as [£]
+left(#EventSignUpFullList.[Date of event],6) as CalendarYearMonthThatEventTookPlace,
+[SignupsInMonth] as [Count]
 from
 #EventSignUpFullList
 ) subtosum
@@ -317,9 +314,6 @@ d.CalendarYear,
 d.FiscalYear,
 d.CalendarMonthName,
 d.MonthsSince
-;
---name column more intuitively
-exec sp_rename 'A_GM_DashBoards_EventSignUpsFullerInfo.[£]','Count','COLUMN'
 ;
 --insert into that table a row with count 0 for every month since an action happened
 --except those that are actually in the real table
@@ -361,7 +355,7 @@ SELECT distinct
  right outer join 
  (
  select distinct calendaryearmonth from DIM_Date
- where MonthsSince > 0
+ where MonthsSince > -1
  ) d on d.CalendarYearMonth >= t1.CalendarYearMonth
 except select 
        [Type]
@@ -381,6 +375,164 @@ and
 [Event Name] = 'London Marathon'
 and CalendarYearMonth > 201412
 */
+;
+--prestep 6 - populate table of full details of all pack requests and use that to summarise these in main work
+--this is longish - it finishes at 'step 1'
+
+select sub.[FYYearEndingOfSend],sub.[Pack send month] as PackSendMonth,ActionType,ConstituentType,COUNT(constituentID) as [SendsInMonth] 
+into #PackRequestFullList
+from 
+( 
+SELECT distinct --so if the same constituent orders two packs they are counted once only
+DIM_Constituent.ConstituentID, 
+DIM_Date.CalendarYearMonth AS [Pack send month], 
+FACT_Action.ActionDateDimID AS [Date of pack send], 
+DIM_Date.FiscalYear AS [FYYearEndingOfSend], 
+DIM_ActionStatus.Description AS ActionStatus, 
+DIM_ActionType.Description AS ActionType,
+ConstituentTypes.ConstituentType
+FROM         FACT_Action INNER JOIN
+DIM_ActionStatus ON FACT_Action.ActionStatusDimID = DIM_ActionStatus.ActionStatusDimID INNER JOIN
+DIM_Constituent ON FACT_Action.ConstituentDimID = DIM_Constituent.ConstituentDimID INNER JOIN
+DIM_ActionType ON FACT_Action.ActionTypeDimID = DIM_ActionType.ActionTypeDimID INNER JOIN
+DIM_Date ON FACT_Action.ActionDate = DIM_Date.ActualDate
+inner join 
+(
+SELECT  distinct   DIM_Constituent.ConstituentID, 
+CASE 
+WHEN ConstituentCode = 'Schools' THEN 'School' 
+WHEN ConstituentCode = 'Faith Groups' THEN 'Faith Group' 
+ELSE 'Neither' END AS ConstituentType
+FROM         
+DIM_Constituent LEFT OUTER JOIN
+DIM_ConstituentConstitCode ON DIM_Constituent.ConstituentDimID = DIM_ConstituentConstitCode.ConstituentDimID
+) as ConstituentTypes on DIM_Constituent.ConstituentID = ConstituentTypes.ConstituentID
+WHERE     (DIM_ActionStatus.Description = 'Sent') AND (DIM_ActionType.Description LIKE '%FR Pack - %') AND 
+(DIM_Date.MonthsSince >-1)
+) as sub 
+group by [FYYearEndingOfSend],ActionType,ConstituentType,[Pack send month]
+order by [FYYearEndingOfSend],[Pack send month] asc
+;
+--PackRequests are created here, populated to A_GM_DashBoards_PackRequestsFullerInfo
+--Short table so just dropping and replacing rather than anything more standard
+--THEN usual facts are taken from that table into the select
+drop table A_GM_DashBoards_PackRequestsFullerInfo
+;
+SELECT 
+Type,
+d.CalendarYearMonth,
+subtosum.ID,
+subtosum.FormsPartOf,
+subtosum.Level,
+A_GM_DashBoards_Grouping.Description,
+ActionType,
+SUM([SendsInMonth]) as [SendsInMonth],
+d.CalendarYear,
+d.FiscalYear,
+d.CalendarMonthName,
+d.MonthsSince
+into A_GM_DashBoards_PackRequestsFullerInfo
+FROM
+(
+select
+'ReceivedPackDuringMonth' as Type,
+PackSendMonth as CalendarYearMonth,
+case
+when
+ConstituentType = 'School'
+then 29 --distinct schools receiving pack
+when
+ConstituentType = 'Faith Group'
+then 28 --distinct faith groups receiving pack
+else 31 --all other distinct people receiving pack THEY MAY NOT ALL BE COMMUNITY?
+end AS ID,
+14 as FormsPartOf, 
+8 as Level,
+--Description is taken from the join with dashboard list
+#PackRequestFullList.ActionType,
+[SendsInMonth]
+from
+#PackRequestFullList
+) subtosum
+left outer join A_GM_DashBoards_Grouping
+on subtosum.ID = A_GM_DashBoards_Grouping.id
+inner join --finding myself having to do this a lot to avoid multiplying by every day in each month!
+(select distinct 
+CalendarYearMonth,
+CalendarYear,
+FiscalYear,
+CalendarMonthName,
+MonthsSince
+from DIM_Date) d on d.CalendarYearMonth = subtosum.CalendarYearMonth
+group by 
+Type,
+d.CalendarYearMonth,
+subtosum.ID,
+subtosum.FormsPartOf,
+subtosum.Level,
+A_GM_DashBoards_Grouping.Description,
+ActionType,
+d.CalendarYear,
+d.FiscalYear,
+d.CalendarMonthName,
+d.MonthsSince
+;
+
+--insert into that table a row with count 0 for every month since an action happened
+--except those that are actually in the real table
+--this makes YTD and other counts adds up
+--in future we'd do dimensionally somehow (this is 'recording what didn't happen')
+insert into A_GM_DashBoards_PackRequestsFullerInfo
+select distinct
+[Type],
+d.[CalendarYearMonth],
+[ID],
+[FormsPartOf],
+[Level],
+[Description],
+ActionType,
+[Count],
+d.[CalendarYear],
+d.[FiscalYear],
+d.[CalendarMonthName],
+d.[MonthsSince]
+from
+
+(
+SELECT distinct
+       t1.[Type]
+      ,d.[CalendarYearMonth]
+      ,t1.[ID]
+      ,t1.[FormsPartOf]
+      ,t1.[Level]
+      ,t1.[Description]
+      ,t1.ActionType
+      ,0 as [Count]
+      /* get these from date
+      ,t1.[CalendarYear]
+      ,t1.[FiscalYear]
+      ,t1.[CalendarMonthName]
+      ,t1.[MonthsSince]
+      */
+  FROM A_GM_DashBoards_PackRequestsFullerInfo t1
+ right outer join 
+ (
+ select distinct calendaryearmonth from DIM_Date
+ where MonthsSince > -1
+ ) d on d.CalendarYearMonth >= t1.CalendarYearMonth
+except select 
+       [Type]
+      ,[CalendarYearMonth]
+      ,[ID]
+      ,[FormsPartOf]
+      ,[Level]
+      ,[Description]
+      ,ActionType
+      ,0 as [DummyCount]
+from A_GM_DashBoards_PackRequestsFullerInfo
+) FindingEveryZeroRow
+inner join DIM_Date d on d.CalendarYearMonth = FindingEveryZeroRow.CalendarYearMonth
+where type is not null
 ;
 
 
@@ -1155,7 +1307,7 @@ Description
 
 union all
 
---step 6 - all event sign ups, these come from all the work in prestep 6 (in fact a physical table recreated then)
+--step 6 - all event sign ups, these come from all the work in prestep 5 (in fact a physical table recreated then)
 
 select
 Type,
@@ -1164,7 +1316,7 @@ ID,
 FormsPartOf,
 Level,
 Description,
-SUM(COUNT) as [Total]
+SUM(A_GM_DashBoards_EventSignUpsFullerInfo.Count) as [Total] --intellisense may not recognise column name yet - something that could be cleaned up easily
 from A_GM_DashBoards_EventSignUpsFullerInfo
 group by 
 Type,
@@ -1174,7 +1326,26 @@ FormsPartOf,
 Level,
 Description
 
+union all
 
+--step 7 - all pack requests, these come from all the work in prestep 6 (in fact a physical table recreated then)
+
+select
+Type,
+CalendarYearMonth,
+ID,
+FormsPartOf,
+Level,
+Description,
+SUM(SendsInMonth) as [Total]
+from A_GM_DashBoards_PackRequestsFullerInfo
+group by 
+Type,
+CalendarYearMonth,
+ID,
+FormsPartOf,
+Level,
+Description
 
 
 --step x for now as helping to work out what to do with them - every single other gift type not already covered
