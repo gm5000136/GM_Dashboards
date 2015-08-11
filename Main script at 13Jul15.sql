@@ -140,7 +140,6 @@ and calendaryearmonth = 201504
 --written in the TowardsHierarchy spreadsheet
 --this prestep is longish: it doesn't finish till we get to 'prestep 6'!
 
-;
 select sub.[Year of event],sub.[Signup month - based on when added to RE],sub.AttributeDescription as [Event Name],[RegistrationType],EventType,FundraisingPlatform,ActionType,[Date of event],COUNT(constituentID) as [SignupsInMonth]
 into #EventSignUpFullList
 		from  
@@ -205,6 +204,7 @@ subtosum.FormsPartOf,
 subtosum.Level,
 A_GM_DashBoards_Grouping.Description,
 [Event Name],
+CalendarYearMonthThatEventTookPlace,
 SUM([Count]) as [Count],
 d.CalendarYear,
 d.FiscalYear,
@@ -310,6 +310,7 @@ subtosum.FormsPartOf,
 subtosum.Level,
 A_GM_DashBoards_Grouping.Description,
 [Event Name],
+CalendarYearMonthThatEventTookPlace,
 d.CalendarYear,
 d.FiscalYear,
 d.CalendarMonthName,
@@ -328,6 +329,7 @@ d.[CalendarYearMonth],
 [Level],
 [Description],
 [Event Name],
+CalendarYearMonthThatEventTookPlace,
 [Count],
 d.[CalendarYear],
 d.[FiscalYear],
@@ -344,6 +346,7 @@ SELECT distinct
       ,t1.[Level]
       ,t1.[Description]
       ,t1.[Event Name]
+      ,CalendarYearMonthThatEventTookPlace
       ,0 as [Count]
       /* get these from date
       ,t1.[CalendarYear]
@@ -365,6 +368,7 @@ except select
       ,[Level]
       ,[Description]
       ,[Event Name]
+      ,CalendarYearMonthThatEventTookPlace
       ,0 as [DummyCount]
 from A_GM_DashBoards_EventSignUpsFullerInfo
 ) FindingEveryZeroRow
