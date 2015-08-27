@@ -1452,8 +1452,30 @@ from A_GM_Dashboards_Targets
 )
 )
 ;
+--this stage inserts into #MonthlyActualsWorking every single target for future months of the current year
+--it stores 'Total' and the two target comparison fields as NULL
+--this allows quick calculation of 'whole year target' and enables us to quickly answer or graph targets for the whole year against actuals to date
 
---this stage is just to make YTD targets for those with 0 income
+insert into #MonthlyActualsWorking
+select  
+[TYPE],
+t.CalendarYearMonth,
+t.ID,
+t.FormsPartOf,
+t.Level,
+t.Description,
+0 as Total,
+0 as IsCurrentMonth,
+1 as IsFUTUREMonth,
+1 as IsInCurrentFY,
+t.Target as Target,
+NULL as [Over(Under)Target],
+NULL as [%Over(Under)Target]
+from A_GM_Dashboards_Targets t
+inner join (select distinct calendaryearmonth,MonthsSince from DIM_Date) d on d.CalendarYearMonth = t.CalendarYearMonth
+where d.MonthsSince<0
+;
+--this stage is just to make YTD targets for those with 0 income (currently for this fiscal year only)
 --it then gets used after the join below
 
 select 
@@ -1492,13 +1514,18 @@ from
 	and t.CalendarYearMonth in (select distinct CalendarYearMonth from DIM_Date where MonthsSince > -1 and CalendarYearMonth in (select CalendarYearMonth from #MonthlyActualsWorking))
 ) MainWorkings
 where MainWorkings.CalendarYearMonth in
-(select distinct calendaryearmonth from DIM_Date where IsCurrentFiscalYear = 1
-and MonthsSince > -1)
+(
+select distinct calendaryearmonth from DIM_Date where IsCurrentFiscalYear = 1
+--and MonthsSince > -1
+)
 group by Type,ID
 
 ;
 
 --main final comparison
+
+declare @CurrentMonth int
+set @CurrentMonth = (select Top 1 CalendarYearMonth from DIM_Date where IsCurrentMonth = 1)
 
 select 
 AllWorkingExceptSorting.*,
@@ -1530,13 +1557,30 @@ from
 select
 M.Type,
 m.ID,
-SUM([Total]) as YTDActual,
-SUM(Target) as YTDTarget
+SUM
+(
+--this currently only allows months before the current one to count in YTD actuals, and no YTD will be returned for past years.
+case when 
+CalendarYearMonth < @CurrentMonth --using this definition for now - COULD change the variable to include current month if we are after day 15 or some other criteria!?
+--and CalendarYearMonth IN (select distinct CalendarYearMonth from DIM_Date where IsCurrentFiscalYear = 1) dealt with by only allowing currentfiscalyear below
+then Total
+else 0 end
+) as YTDActual,
+SUM
+(
+--case means we add up all past months of this current YTD to find YTD target totals. So no YTD will be returned for past years.
+case when 
+CalendarYearMonth < @CurrentMonth --using this definition for now - COULD change the variable to include current month if we are after day 15 or some other criteria!?
+--and CalendarYearMonth IN (select distinct CalendarYearMonth from DIM_Date where IsCurrentFiscalYear = 1) dealt with by only allowing currentfiscalyear below
+then Target
+else 0 end
+) as YTDTarget
 from #MonthlyActualsWorking M
 where calendaryearmonth
 in
 (select distinct calendaryearmonth from DIM_Date where IsCurrentFiscalYear = 1
-and MonthsSince > 0)
+--and MonthsSince > 0
+)
 group by 
 M.Type,
 m.ID
@@ -1578,7 +1622,12 @@ left outer join #YTDTargetsWithZEROIncome Y
 on Y.ID = t.ID
 and y.Type = t.Type
 where m.ID is null
-and t.CalendarYearMonth in (select distinct CalendarYearMonth from DIM_Date where MonthsSince > -1 and CalendarYearMonth in (select CalendarYearMonth from #MonthlyActualsWorking))
+and t.CalendarYearMonth in 
+(select distinct CalendarYearMonth 
+from 
+DIM_Date 
+where --MonthsSince > -1 and 
+CalendarYearMonth in (select CalendarYearMonth from #MonthlyActualsWorking))
 
 
 --things to consider: 
