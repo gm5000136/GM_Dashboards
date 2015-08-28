@@ -569,12 +569,19 @@ WHEN
 	RuleNumberToApply IN (4,21)
 	And TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'Small Trusts'
 	then 75
-	when RuleNumberToApply = 4 then 50
+	when RuleNumberToApply = 4 and Product = 'PPC' then 45
+	when RuleNumberToApply = 4 and Product = 'Social Media Advertising' then 61
+	when RuleNumberToApply = 4 then 39
+	when RuleNumberToApply = 21 and Product = 'PPC' then 45
+	when RuleNumberToApply = 21 and Product = 'Social Media Advertising' then 61
 	when RuleNumberToApply = 21 then 39
 WHEN RuleNumberToApply = 5 Then 51 --No such thing as regular wahoo, so any would have to be shop
-WHEN RuleNumberToApply = 6 THEN 54 --Will be more complex than this in reality
-WHEN RuleNumberToApply = 7 and GiftCodeOfTheRG = 'SMS' then 55
-WHEN RuleNumberToApply = 7 then 33 --Will be more complex than this in reality
+WHEN RuleNumberToApply = 6 and Product = 'PPC' then 45
+when RuleNumberToApply = 6 and Product = 'Social Media Advertising' then 61
+WHEN RuleNumberToApply = 6 THEN 54
+--WHEN RuleNumberToApply = 7 and GiftCodeOfTheRG = 'SMS' then 55 --old version, has it been completely superseeded correctly by below?
+WHEN RuleNumberToApply = 7 and Product = 'PSMS - DRTV' then 55
+WHEN RuleNumberToApply = 7 then 33
 when
 	RuleNumberToApply in (17,18,19) 
 	and Product = 'Direct Solicited Donations'
@@ -714,12 +721,19 @@ WHEN
 	RuleNumberToApply IN (4,21)
 	And TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'Small Trusts'
 	then 75
-	when RuleNumberToApply = 4 then 50
+	when RuleNumberToApply = 4 and Product = 'PPC' then 45
+	when RuleNumberToApply = 4 and Product = 'Social Media Advertising' then 61
+	when RuleNumberToApply = 4 then 39
+	when RuleNumberToApply = 21 and Product = 'PPC' then 45
+	when RuleNumberToApply = 21 and Product = 'Social Media Advertising' then 61
 	when RuleNumberToApply = 21 then 39
 WHEN RuleNumberToApply = 5 Then 51 --No such thing as regular wahoo, so any would have to be shop
-WHEN RuleNumberToApply = 6 THEN 54 --Will be more complex than this in reality
-WHEN RuleNumberToApply = 7 and GiftCodeOfTheRG = 'SMS' then 55
-WHEN RuleNumberToApply = 7 then 33 --Will be more complex than this in reality
+WHEN RuleNumberToApply = 6 and Product = 'PPC' then 45
+when RuleNumberToApply = 6 and Product = 'Social Media Advertising' then 61
+WHEN RuleNumberToApply = 6 THEN 54
+--WHEN RuleNumberToApply = 7 and GiftCodeOfTheRG = 'SMS' then 55 --old version, has it been completely superseeded correctly by below?
+WHEN RuleNumberToApply = 7 and Product = 'PSMS - DRTV' then 55
+WHEN RuleNumberToApply = 7 then 33
 when
 	RuleNumberToApply in (17,18,19) 
 	and Product = 'Direct Solicited Donations'
@@ -849,12 +863,19 @@ WHEN
 	RuleNumberToApply IN (4,21)
 	And TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'Small Trusts'
 	then 75
-	when RuleNumberToApply = 4 then 50
+	when RuleNumberToApply = 4 and Product = 'PPC' then 45
+	when RuleNumberToApply = 4 and Product = 'Social Media Advertising' then 61
+	when RuleNumberToApply = 4 then 39
+	when RuleNumberToApply = 21 and Product = 'PPC' then 45
+	when RuleNumberToApply = 21 and Product = 'Social Media Advertising' then 61
 	when RuleNumberToApply = 21 then 39
 WHEN RuleNumberToApply = 5 Then 51 --No such thing as regular wahoo, so any would have to be shop
-WHEN RuleNumberToApply = 6 THEN 54 --Will be more complex than this in reality
-WHEN RuleNumberToApply = 7 and GiftCodeOfTheRG = 'SMS' then 55
-WHEN RuleNumberToApply = 7 then 33 --Will be more complex than this in reality
+WHEN RuleNumberToApply = 6 and Product = 'PPC' then 45
+when RuleNumberToApply = 21 and Product = 'Social Media Advertising' then 61
+WHEN RuleNumberToApply = 6 THEN 54
+--WHEN RuleNumberToApply = 7 and GiftCodeOfTheRG = 'SMS' then 55 --old version, has it been completely superseeded correctly by below?
+WHEN RuleNumberToApply = 7 and Product = 'PSMS - DRTV' then 55
+WHEN RuleNumberToApply = 7 then 33
 when
 	RuleNumberToApply in (17,18,19) 
 	and Product = 'Direct Solicited Donations'
@@ -1122,12 +1143,20 @@ WHEN
 	RuleNumberToApply IN (4,21)
 	And TargetAudience = 'Small Trusts'
 	then 75
-WHEN RuleNumberToApply IN (4,21) THEN 39
-WHEN RuleNumberToApply = 5 and GiftCode like '%Wahoo%' THEN 46
-WHEN RuleNumberToApply = 5 Then 51
-WHEN RuleNumberToApply = 6 THEN 53 --Will be more complex than this in reality
-WHEN RuleNumberToApply = 7 and sub.GiftCode = 'SMS' then 55 --Will be more complex than this in reality
-WHEN RuleNumberToApply = 7 then 33 --Will be more complex than this in reality
+	when RuleNumberToApply = 4 and Product = 'PPC' then 45
+	when RuleNumberToApply = 4 and Product = 'Social Media Advertising' then 61
+	when RuleNumberToApply = 4 then 39
+	when RuleNumberToApply = 21 and Product = 'PPC' then 45
+	when RuleNumberToApply = 21 and Product = 'Social Media Advertising' then 61
+	when RuleNumberToApply = 21 then 39
+WHEN RuleNumberToApply = 5 and GiftCode like '%Wahoo%' THEN 46	
+WHEN RuleNumberToApply = 5 Then 51 --No such thing as regular wahoo, so any would have to be shop
+WHEN RuleNumberToApply = 6 and Product = 'PPC' then 45
+when RuleNumberToApply = 6 and Product = 'Social Media Advertising' then 61
+WHEN RuleNumberToApply = 6 THEN 53
+--WHEN RuleNumberToApply = 7 and GiftCodeOfTheRG = 'SMS' then 55 --old version, has it been completely superseeded correctly by below?
+WHEN RuleNumberToApply = 7 and Product = 'PSMS - DRTV' then 55
+WHEN RuleNumberToApply = 7 then 33
 WHEN 
 	RuleNumberToApply in (17,18,19) 
 	and Product = 'Direct Solicited Donations'
@@ -1767,3 +1796,230 @@ on DaysSinceMonthEnd.CalendarYearMonth = r.CalendarYearMonth
 ) Main
 where DaysSinceMonthEnd > 15
 and [Type] <> 'ActualReceivedRGIncome' --this would be useful but is currently calculated on currentFY to define cold, would need to revisit
+;
+
+--Secondary bit at the end to calculate the correct givers, gift and annual value of all gifts active at month end by dashID!
+
+/*in order to do so we will need: 
+
+--These fields
+GM_TIEStyle_CampaignDescriptor
+TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments
+Product
+packagecategorydescription
+AppealTypeFromAppealID
+Various dashboard fields
+
+--From these tables
+1. A table of 'AllRGFacts' which I think boils down to 'VIEW_RG_History' with latest facts for each actual gift (some being from latest amendment!) joined to other tables to find product and targetaudience
+2. A_GM_Dashboards_KnownDescriptors
+3. A_GM_DashBoards_Grouping
+*/
+
+select
+h.*,
+a.Product,
+PackageCategoryDescription,
+a.Audience as TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
+case 
+when substring(h.AppealIdentifier,3,4) = '/UPR' then 'Welcome' 
+when substring(h.AppealIdentifier,3,3) = '/UP' then 'Non-Welcome upgrade appeal' 
+when h.AppealIdentifier IN (select * from #AppealsToBeTreatedAsUpgrade) then 'Non-Welcome upgrade appeal'
+else 'Other'
+End as AppealTypeFromAppealID
+into #WidenedRGHistory
+from 
+VIEW_RG_History h
+left outer join DIM_Package p on p.PackageIdentifier = h.PackageIdentifier
+left outer join DIM_Appeal a on a.AppealIdentifier = h.AppealIdentifier
+
+--need to deal with these newly added products here and in main script!: PPC, PSMS - DRTV, Social Media Advertising and POSSIBLY 'Welcome Activity'
+--select distinct product from #WidenedRGHistory
+
+--dashboard assignment. This would need changing if the 'new RG' definition in main file ever changed...although it is not completely identical as it has to cover amends as well as new gifts
+select 
+SubToGetValues.*,
+FormsPartOf,
+Level,
+Description
+into #WidenedRGHistory_with_DashID
+from
+(
+select
+'Wider version of VIEW_RGHistory' as [Type],
+h.*,
+CalendarYearMonth,
+case 
+--This first one moves ANY Supporter Development Team Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. This is often LOST for amendments as target audience changes are not put on the amendment
+WHEN h.GM_TIEStyle_CampaignDescriptor like 'Supporter Development%'
+--This needs looking at!
+AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23') then 72
+WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
+--A couple of steps to cover RULE 4:
+WHEN 
+	RuleNumberToApply IN (4,21)
+	And TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'Small Trusts'
+	then 75
+	when RuleNumberToApply = 4 and Product = 'PPC' then 45
+	when RuleNumberToApply = 4 and Product = 'Social Media Advertising' then 61
+	when RuleNumberToApply = 4 then 39
+	when RuleNumberToApply = 21 and Product = 'PPC' then 45
+	when RuleNumberToApply = 21 and Product = 'Social Media Advertising' then 61
+	when RuleNumberToApply = 21 then 39
+WHEN RuleNumberToApply = 5 Then 51 --No such thing as regular wahoo, so any would have to be shop
+WHEN RuleNumberToApply = 6 and Product = 'PPC' then 45
+when RuleNumberToApply = 6 and Product = 'Social Media Advertising' then 61
+WHEN RuleNumberToApply = 6 THEN 54
+--WHEN RuleNumberToApply = 7 and GiftCodeOfTheRG = 'SMS' then 55 --old version, has it been completely superseeded correctly by below?
+WHEN RuleNumberToApply = 7 and Product = 'PSMS - DRTV' then 55
+WHEN RuleNumberToApply = 7 then 33
+when
+	RuleNumberToApply in (17,18,19) 
+	and Product = 'Direct Solicited Donations'
+	then 73
+WHEN RuleNumberToApply in (17,18,19) then 72
+--Rule21 dealt with 4 above
+WHEN 
+RuleNumberToApply = 23
+and product = 'Regular Gifts - Upgrade and Reactivation'
+and TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter'
+and packagecategorydescription in ('Telephone') 
+then 79
+WHEN 
+RuleNumberToApply = 23
+and product = 'Regular Gifts - Upgrade and Reactivation'
+and TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter'
+and packagecategorydescription in ('Direct Mail','Direct Mail Reminder') 
+then 78
+WHEN 
+RuleNumberToApply = 23
+and product = 'Regular Gifts - Upgrade and Reactivation'
+and AppealTypeFromAppealID = 'Welcome'
+and packagecategorydescription in ('Telephone') 
+then 37
+WHEN 
+RuleNumberToApply = 23
+and product = 'Regular Gifts - Upgrade and Reactivation'
+and AppealTypeFromAppealID = 'Welcome'
+and packagecategorydescription in ('Direct Mail','Direct Mail Reminder') 
+then 64
+WHEN 
+RuleNumberToApply = 23
+and product = 'Regular Gifts - Upgrade and Reactivation'
+and AppealTypeFromAppealID = 'Non-Welcome upgrade appeal'
+and packagecategorydescription in ('Telephone') 
+then 65
+WHEN 
+RuleNumberToApply = 23
+and product = 'Regular Gifts - Upgrade and Reactivation'
+and AppealTypeFromAppealID = 'Non-Welcome upgrade appeal'
+and packagecategorydescription in ('Direct Mail','Direct Mail Reminder') 
+then 66
+When RuleNumberToApply = 23 then 50
+WHEN RuleNumberToApply = 20 then 50
+WHEN RuleNumberToApply = 22 then 50
+WHEN RuleNumberToApply = 23 then 50
+WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' then 72
+when RuleNumberToApply = 24 then 49
+WHEN RuleNumberToApply = 26 THEN 53 --Will be more complex than this in reality
+else 999
+end as ID
+from #WidenedRGHistory h
+left outer join A_GM_Dashboards_KnownDescriptors
+on A_GM_Dashboards_KnownDescriptors.GM_TIEStyle_CampaignDescriptor = h.GM_TIEStyle_CampaignDescriptor
+inner join DIM_Date d on d.DateDimID = h.[DatedimID of gift or amendment]
+) SubToGetValues
+left outer join A_GM_DashBoards_Grouping
+on A_GM_DashBoards_Grouping.ID = subtogetvalues.ID
+
+
+
+
+
+
+
+
+--amended existing part of file size work - basically replacing VIEW_RG_History with our version that now has more information in
+
+select LatestSequence.*,pt.PaymentType,Amounts.ChangeInAnnualisedAmount
+into #RegularGiftDetails
+from
+(
+select distinct ConstituentID,r.GiftFactID_of_the_RG,d.CalendarYearMonth, ID, MAX(r.sequence) as LatestSequence
+from #WidenedRGHistory_with_DashID r
+inner join DIM_Date d on d.DateDimID = r.[DatedimID of gift or amendment]
+group by ConstituentID,r.GiftFactID_of_the_RG,d.CalendarYearMonth, ID --so same gift will have multiple rows once for each ID as well as other factors here
+) LatestSequence
+inner join 
+(
+select GiftFactID_of_the_RG,Sequence,ChangeInAnnualisedAmount --this is populated with full amount for original gift
+from #WidenedRGHistory_with_DashID
+) Amounts 
+on Amounts.GiftFactID_of_the_RG = LatestSequence.GiftFactID_of_the_RG
+and Amounts.Sequence = LatestSequence.LatestSequence
+inner join FACT_Gift on latestsequence.GiftFactID_of_the_RG = FACT_Gift.GiftFactID
+inner join DIM_PaymentType PT on PT.PaymentTypeDimID = fact_gift.PaymentTypeDimID
+
+--for checking
+--select * from #RegularGiftDetails
+
+;
+--All regular gifts crossed with every single relevant month since that gift began (including first month)
+--Commented out limiter to months from specific month can save time
+--takes 105 seconds alone with limiter
+select distinct GiftFactID_of_the_RG, CalendarYearMonth as EveryRelevantMonth
+into #EveryMonthGiftMayHaveExisted
+from 
+(
+select GiftFactID_of_the_RG, MIN(dim_date.calendaryearmonth) as GiftStartMonth
+from
+#WidenedRGHistory_with_DashID inner join DIM_Date on DIM_Date.DateDimID = #WidenedRGHistory_with_DashID.[DatedimID of gift or amendment]
+group by GiftFactID_of_the_RG
+) r inner join 
+DIM_Date d on d.CalendarYearMonth >= r.GiftStartMonth
+--where d.CalendarYearMonth >201303 --just limiting for speed
+and CalendarYearMonth < (select top 1 CalendarYearMonth from DIM_Date where IsCurrentMonth = 1)
+;
+
+--combining into main regular giving list by constituent and gift
+select 
+r.ConstituentID,
+m.GiftFactID_of_the_RG,
+EveryRelevantMonth as CalendarYearMonth,
+r.PaymentType,
+r.ChangeInAnnualisedAmount as AnnualAmountAtEndThisMonth,
+r.LatestSequence as LatestSequence,
+r.id as DashID
+into #RegularGivingResultsWithoutRemovingOutdatedAmendments
+from #EveryMonthGiftMayHaveExisted m
+inner join #RegularGiftDetails r 
+on r.GiftFactID_of_the_RG = m.GiftFactID_of_the_RG 
+and r.CalendarYearMonth <= m.EveryRelevantMonth
+--this join is all cancellation months so that those are not included in the list
+left outer join 
+(
+select
+GiftFactID,
+case when
+--next line deals with 'null' and assumes they are all long in the past. Issue re-raised of getting these corrected on RE (and noted as issue on github)
+s.[Gift Status Date] is null then 197912 else CalendarYearMonth end as MonthCancelled
+from
+A_GM_GiftStatusDate s 
+inner join FACT_Gift g on g.GiftSystemID = s.[System Record ID]
+left outer join DIM_Date d on d.ActualDate = s.[Gift Status Date]
+where [Gift Status] in ('Terminated','Cancelled','Completed')
+) Cancellations 
+on Cancellations.GiftFactID = r.GiftFactID_of_the_RG
+where 
+Cancellations.MonthCancelled is null --i.e. still active now
+or EveryRelevantMonth < Cancellations.MonthCancelled --i.e. had been cancelled during or since that month
+
+;
+
+--to make final totals
+select CalendarYearMonth, DashID, COUNT (distinct ConstituentID) as Givers,COUNT (Distinct GiftFactID_of_the_RG) as Gifts,SUM(AnnualAmountAtEndThisMonth) as Value
+from #RegularGivingResultsWithoutRemovingOutdatedAmendments
+left outer join A_GM_DashBoards_Grouping
+on A_GM_DashBoards_Grouping.ID = #RegularGivingResultsWithoutRemovingOutdatedAmendments.DashID
+group by CalendarYearMonth, DashID
+order by CalendarYearMonth,DashID asc
