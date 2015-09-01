@@ -4,9 +4,7 @@ SELECT     OriginalView.ConstituentID, OriginalView.GiftFactID_of_the_RG, Origin
                       OriginalView.AnnualisedAmount, OriginalView.ChangeInAmount, OriginalView.ChangeInAnnualisedAmount, OriginalView.InstallmentCountPerYear, 
                       OriginalView.PreviousInstallmentCountPerYear, OriginalView.[FrequencyChanged?], OriginalView.GM_PreviousAnnualisedAmount, 
                       OriginalView.GM_PreviousInstallmentAmount, OriginalView.GM_ChangeInAmount, OriginalView.GM_TIEStyle_CampaignDescriptor, 
-                      CASE WHEN DefaultGroupingID IS NULL 
-                      THEN 999 WHEN RuleNumberToApply = 4 THEN 50 WHEN RuleNumberToApply = 5 THEN 51 WHEN RuleNumberToApply = 6 THEN 54 WHEN (RuleNumberToApply = 7
-                       AND GCs.[Description] = 'SMS') THEN 55 WHEN RuleNumberToApply = 7 THEN 33 ELSE DefaultGroupingID END AS DashGroup
+                      CASE WHEN DefaultGroupingID IS NULL THEN 999 ELSE DefaultGroupingID END AS DashGroup, GCs.Description AS GiftCodeOfTheRG
 FROM         (SELECT     sub.ConstituentID, sub.GiftFactID_of_the_RG, sub.GiftChangeFactID AS ID_of_the_individual_gift_or_amendment, sub.Sequence, sub.IsOriginal, 
                                               sub.AppealDescription, sub.AppealIdentifier, sub.CampaignIdentifier, sub.CampaignDescription, sub.PackageIdentifier, sub.PackageDescription, 
                                               sub.[DatedimID of gift or amendment], sub.Amount, sub.AnnualisedAmount, sub.ChangeInAmount, sub.ChangeInAnnualisedAmount, 
