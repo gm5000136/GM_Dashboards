@@ -625,7 +625,11 @@ and AppealTypeFromAppealID = 'Non-Welcome upgrade appeal'
 and packagecategorydescription in ('Direct Mail','Direct Mail Reminder') 
 then 66
 When RuleNumberToApply = 23 then 50
+--updated rule 20 in case it had been including PPC and/or facebook
+WHEN RuleNumberToApply = 20 and Product = 'PPC' then 45
+when RuleNumberToApply = 20 and Product = 'Social Media Advertising' then 61
 WHEN RuleNumberToApply = 20 then 50
+--rule 21 dealt along with rule 4 earlier on
 WHEN RuleNumberToApply = 22 then 50
 WHEN RuleNumberToApply = 23 then 50
 WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' then 72
@@ -777,7 +781,11 @@ and AppealTypeFromAppealID = 'Non-Welcome upgrade appeal'
 and packagecategorydescription in ('Direct Mail','Direct Mail Reminder') 
 then 66
 When RuleNumberToApply = 23 then 50
+--updated rule 20 in case it had been including PPC and/or facebook
+WHEN RuleNumberToApply = 20 and Product = 'PPC' then 45
+when RuleNumberToApply = 20 and Product = 'Social Media Advertising' then 61
 WHEN RuleNumberToApply = 20 then 50
+--rule 21 dealt along with rule 4 earlier on
 WHEN RuleNumberToApply = 22 then 50
 WHEN RuleNumberToApply = 23 then 50
 WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' then 72
@@ -919,7 +927,11 @@ and AppealTypeFromAppealID = 'Non-Welcome upgrade appeal'
 and packagecategorydescription in ('Direct Mail','Direct Mail Reminder') 
 then 66
 When RuleNumberToApply = 23 then 50
+--updated rule 20 in case it had been including PPC and/or facebook
+WHEN RuleNumberToApply = 20 and Product = 'PPC' then 45
+when RuleNumberToApply = 20 and Product = 'Social Media Advertising' then 61
 WHEN RuleNumberToApply = 20 then 50
+--rule 21 dealt along with rule 4 earlier on
 WHEN RuleNumberToApply = 22 then 50
 WHEN RuleNumberToApply = 23 then 50
 WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' then 72
@@ -1162,8 +1174,11 @@ WHEN
 	and Product = 'Direct Solicited Donations'
 	then 73
 WHEN RuleNumberToApply in (17,18,19) then 71
+--updated rule 20 in case it had been including PPC and/or facebook
+WHEN RuleNumberToApply = 20 and Product = 'PPC' then 45
+when RuleNumberToApply = 20 and Product = 'Social Media Advertising' then 61
 WHEN RuleNumberToApply = 20 then 50
---Rule 21 dealt with rule 4 above
+--rule 21 dealt along with rule 4 earlier on
 WHEN RuleNumberToApply = 22 then 50
 WHEN RuleNumberToApply = 23 then 50
 WHEN RuleNumberToApply = 24 AND TargetAudience = 'High Value Supporter' then 72
@@ -1399,41 +1414,41 @@ d.Description,
 0 as [Total]
 from
 (
-select * from
-(
-select distinct
---PrimaryKeyWithValues.FiscalYear,
-AllPastMonths.CalendarYearMonth,
-PrimaryKeyWithValues.Type,
-PrimaryKeyWithValues.ID
---0 as [Total]
-from
-(select distinct d.FiscalYear,m.CalendarYearMonth,m.type,m.ID,m.[Total]
- from #MainResultsTable m inner join DIM_Date d on d.CalendarYearMonth = m.CalendarYearMonth)
-PrimaryKeyWithValues
-inner join
-(select distinct FiscalYear,CalendarYearMonth from DIM_Date
-where MonthsSince >-1)
-AllPastMonths
-on PrimaryKeyWithValues.FiscalYear = AllPastMonths.FiscalYear
-) sub
-except
-select
-CalendarYearMonth,
-Type,
-ID
-from #MainResultsTable
+		select * from
+		(
+		select distinct
+		--PrimaryKeyWithValues.FiscalYear,
+		AllPastMonths.CalendarYearMonth,
+		PrimaryKeyWithValues.Type,
+		PrimaryKeyWithValues.ID
+		--0 as [Total]
+		from
+		(select distinct d.FiscalYear,m.CalendarYearMonth,m.type,m.ID,m.[Total]
+		 from #MainResultsTable m inner join DIM_Date d on d.CalendarYearMonth = m.CalendarYearMonth)
+		PrimaryKeyWithValues
+		inner join
+		(select distinct FiscalYear,CalendarYearMonth from DIM_Date
+		where MonthsSince >-1) --needs to be minus TWO because when LOOKED AT on first day of a month, monthssince is still -1 since defined 10pm last night!!
+		AllPastMonths
+		on PrimaryKeyWithValues.FiscalYear = AllPastMonths.FiscalYear
+		) sub
+		except
+		select
+		CalendarYearMonth,
+		Type,
+		ID
+		from #MainResultsTable
 ) SubToFindMissingRows
 left outer join A_GM_DashBoards_Grouping d on d.ID = SubToFindMissingRows.ID
 
-;
 
+;
 
 --Target comparison - This includes a 'current' YTD (i.e. not including YTD as at end of every month, and ONLY WORKING IT OUT FOR THE CURRENT YEAR AT PRESENT...) only not looking at current month for now (though we could? Or base on % of days that have passed - not really as fair as it sounds?) - I used CTE at first (first temp table) but it was not effective
 --naturally keeps out booked future gifts which are always mistakes says Ado
 ;
 
-select 
+select distinct --I THINK it must be right to do this distinct
 R.*,
 case 
 	when r.CalendarYearMonth = (select CalendarYearMonth from DIM_Date where IsCurrentDate = 1) then 1 else 0 
@@ -1444,7 +1459,7 @@ end as IsFUTUREMonth,
 case 
     when r.CalendarYearMonth IN (select CalendarYearMonth from DIM_Date where IsCurrentFiscalYear = 1) then 1 else 0
     end as IsInCurrentFY,
-Target,
+case when Target IS null then 0 else Target end as [Target], --so if no target assigned I give it zero, not return NULL,
 --next two lines now compare values with no target to zero to give an accurate 'over/under' sum 
 --BUT target field itself still remains null, so where a target was deliberately zero for given month, we know this
 case when Target IS NULL then r.[Total] - 0
@@ -1480,6 +1495,7 @@ select min(calendaryearmonth) as EarliestTargetSet
 from A_GM_Dashboards_Targets
 )
 )
+
 ;
 --this stage inserts into #MonthlyActualsWorking every single target for future months of the current year
 --it stores 'Total' and the two target comparison fields as NULL
@@ -1487,7 +1503,7 @@ from A_GM_Dashboards_Targets
 
 insert into #MonthlyActualsWorking
 select  
-[TYPE],
+t.[TYPE],
 t.CalendarYearMonth,
 t.ID,
 t.FormsPartOf,
@@ -1497,11 +1513,33 @@ t.Description,
 0 as IsCurrentMonth,
 1 as IsFUTUREMonth,
 1 as IsInCurrentFY,
-t.Target as Target,
+case when t.Target IS null then 0 else t.Target end as Target, --in case there could be NULLs returned otherwise,
 NULL as [Over(Under)Target],
 NULL as [%Over(Under)Target]
 from A_GM_Dashboards_Targets t
 inner join (select distinct calendaryearmonth,MonthsSince from DIM_Date) d on d.CalendarYearMonth = t.CalendarYearMonth
+--this next inner join deals with an absurdity on first day of every month where DIM_Date still says
+--that monthssince = -1 because it is created at time of data import
+--so this join checks that we are only importing combinations of Type,CalendarYearMonth,ID that do not already exist!
+inner join
+(
+select  
+[TYPE],
+t.CalendarYearMonth,
+t.ID
+from A_GM_Dashboards_Targets t
+inner join (select distinct calendaryearmonth,MonthsSince from DIM_Date) d on d.CalendarYearMonth = t.CalendarYearMonth
+where d.MonthsSince<0
+except 
+select 
+Type,
+CalendarYearMonth,
+id
+from #MonthlyActualsWorking
+) ValidityCheck 
+on ValidityCheck.Type = t.Type
+and ValidityCheck.CalendarYearMonth = t.CalendarYearMonth
+and ValidityCheck.ID = t.ID
 where d.MonthsSince<0
 ;
 --this stage is just to make YTD targets for those with 0 income (currently for this fiscal year only)
@@ -1767,6 +1805,8 @@ Level,
 Description
 */
 
+
+
 drop table A_GM_Dashboards_FullResultsForLongTermTrends
 ;
 select * into A_GM_Dashboards_FullResultsForLongTermTrends
@@ -1916,7 +1956,11 @@ and AppealTypeFromAppealID = 'Non-Welcome upgrade appeal'
 and packagecategorydescription in ('Direct Mail','Direct Mail Reminder') 
 then 66
 When RuleNumberToApply = 23 then 50
+--updated rule 20 in case it had been including PPC and/or facebook
+WHEN RuleNumberToApply = 20 and Product = 'PPC' then 45
+when RuleNumberToApply = 20 and Product = 'Social Media Advertising' then 61
 WHEN RuleNumberToApply = 20 then 50
+--rule 21 dealt along with rule 4 earlier on
 WHEN RuleNumberToApply = 22 then 50
 WHEN RuleNumberToApply = 23 then 50
 WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' then 72
