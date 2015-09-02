@@ -32,7 +32,7 @@ End as AppealType,
 VIEW_RG_History.AppealIdentifier, 
 DIM_Package.PackageCategoryDescription,
 DIM_Appeal.Product,
-dim_appeal.Audience as TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
+DIM_Audience.Audience as TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments, --this is the RIGHT place to take audience from (same with team) - it is flattened correctly including overrides to FACT_Gift!!!
 VIEW_RG_History.GM_TIEStyle_CampaignDescriptor,
 VIEW_RG_History.GiftCodeOfTheRG --Can be (and sometimes is...) null
 into #AmendmentFacts
@@ -41,6 +41,8 @@ inner join DIM_Date
 on dim_date.DateDimID = VIEW_RG_History.[DatedimID of gift or amendment]
 left outer join DIM_Package on DIM_Package.PackageDescription = VIEW_RG_History.PackageDescription
 inner join DIM_Appeal on DIM_Appeal.AppealIdentifier = VIEW_RG_History.AppealIdentifier
+inner join FACT_Gift on FACT_Gift.GiftFactID = VIEW_RG_History.GiftFactID_of_the_RG
+left outer join DIM_Audience on DIM_Audience.AudienceDimID = FACT_Gift.AudienceDimID
 where 
 ISoriginal = 0
 and ChangeInAnnualisedAmount <> 0
@@ -66,7 +68,7 @@ End as AppealTypeForUpgradesOnly,
 VIEW_RG_History.AppealIdentifier, 
 DIM_Package.PackageCategoryDescription,
 DIM_Appeal.Product,
-dim_appeal.Audience as TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
+DIM_Audience.Audience as TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments, --this is the RIGHT place to take audience from (same with team) - it is flattened correctly including overrides to FACT_Gift!!!
 VIEW_RG_History.GM_TIEStyle_CampaignDescriptor,
 VIEW_RG_History.GiftCodeOfTheRG --Can be (and sometimes is...) null
 into #CancellationFacts
@@ -83,6 +85,10 @@ left outer join DIM_Date
 on [Gift Status Date] = ActualDateString
 left outer join DIM_Package on DIM_Package.PackageDescription = VIEW_RG_History.PackageDescription
 inner join DIM_Appeal on DIM_Appeal.AppealIdentifier = VIEW_RG_History.AppealIdentifier
+inner join FACT_Gift on FACT_Gift.GiftFactID = VIEW_RG_History.GiftFactID_of_the_RG
+left outer join DIM_Audience on DIM_Audience.AudienceDimID = FACT_Gift.AudienceDimID
+
+
 
 --prestep 3: store facts on all new regular gifts
 
@@ -99,7 +105,7 @@ End as AppealTypeForUpgradesOnly,
 VIEW_RG_History.AppealIdentifier, 
 DIM_Package.PackageCategoryDescription,
 DIM_Appeal.Product,
-dim_appeal.Audience as TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
+DIM_Audience.Audience as TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments, --this is the RIGHT place to take audience from (same with team) - it is flattened correctly including overrides to FACT_Gift!!!
 VIEW_RG_History.GM_TIEStyle_CampaignDescriptor,
 VIEW_RG_History.GiftCodeOfTheRG --Can be (and sometimes is...) null
 into #NewRGFacts
@@ -111,6 +117,8 @@ left outer join DIM_Date
 on VIEW_RG_History.[DatedimID of gift or amendment] = DIM_Date.DateDimID
 left outer join DIM_Package on DIM_Package.PackageDescription = VIEW_RG_History.PackageDescription
 inner join DIM_Appeal on DIM_Appeal.AppealIdentifier = VIEW_RG_History.AppealIdentifier
+inner join FACT_Gift on FACT_Gift.GiftFactID = VIEW_RG_History.GiftFactID_of_the_RG
+left outer join DIM_Audience on DIM_Audience.AudienceDimID = FACT_Gift.AudienceDimID
 where IsOriginal = 1
 
 
@@ -560,9 +568,10 @@ select
 'AnnualValueOfNewRegularGifts' as [Type],
 CalendarYearMonth,
 case 
---This first one moves ANY Supporter Development Team Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. This is often LOST for amendments as target audience changes are not put on the amendment
-WHEN MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Development%'
-AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23') then 72
+--This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. 
+--This is because that means the person was account managed by HV, so anything they do is credited to that team!
+--This is often LOST for amendments as target audience changes are not put on the amendment
+WHEN TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23') then 72
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
 --A couple of steps to cover RULE 4:
 WHEN 
@@ -716,9 +725,10 @@ select
 'AnnualValueOfChangesToRegularGifts' as [Type],
 calendaryearmonth_of_amendment as CalendarYearMonth,
 case 
---This first one moves ANY Supporter Development Team Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. This is often LOST for amendments as target audience changes are not put on the amendment
-WHEN MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Development%'
-AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23') then 72
+--This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. 
+--This is because that means the person was account managed by HV, so anything they do is credited to that team!
+--This is often LOST for amendments as target audience changes are not put on the amendment
+WHEN TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23') then 72
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
 --A couple of steps to cover RULE 4:
 WHEN 
@@ -862,9 +872,10 @@ select
 'AnnualValueCancelledThisMonth' as [Type],
 CalendarYearMonth,
 case 
---This first one moves ANY Supporter Development Team Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. This is often LOST for amendments as target audience changes are not put on the amendment
-WHEN MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Development%'
-AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23') then 72
+--This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. 
+--This is because that means the person was account managed by HV, so anything they do is credited to that team!
+--This is often LOST for amendments as target audience changes are not put on the amendment
+WHEN TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23') then 72
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
 --A couple of steps to cover RULE 4:
 WHEN 
@@ -1040,10 +1051,10 @@ from
 (
 select
 CASE 
---This first one moves ANY Supporter Development Team Gift, where not one of the HV groupings (by rule), where the target audience IS HV to 'HV Stewardship'. Done because target audience is often overwritten
-WHEN sub.GM_TIEStyle_CampaignDescriptor like 'Supporter Development%'
-AND TargetAudience = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19')
-then 72
+--This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. 
+--This is because that means the person was account managed by HV, so anything they do is credited to that team!
+--This is often LOST for amendments as target audience changes are not put on the amendment
+WHEN TargetAudience = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23') then 72
 --this second one for cash only applies the 'pre-rule' for rollingSMS, not currently a numbered rule (since campaign is not of use to us)
 WHEN sub.appealidentifier in (select RollingSMSAppealID from #AppealsToBeTreatedAsRollingSMS) then 58
 --rule C1: separate out all peer to peer WHERE A COMMUNITY OR EVENTS GIFT
@@ -1860,7 +1871,7 @@ select
 h.*,
 a.Product,
 PackageCategoryDescription,
-a.Audience as TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments,
+DIM_Audience.Audience as TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments, --this is the RIGHT place to take audience from (same with team) - it is flattened correctly including overrides to FACT_Gift!!!
 case 
 when substring(h.AppealIdentifier,3,4) = '/UPR' then 'Welcome' 
 when substring(h.AppealIdentifier,3,3) = '/UP' then 'Non-Welcome upgrade appeal' 
@@ -1872,6 +1883,9 @@ from
 VIEW_RG_History h
 left outer join DIM_Package p on p.PackageIdentifier = h.PackageIdentifier
 left outer join DIM_Appeal a on a.AppealIdentifier = h.AppealIdentifier
+inner join FACT_Gift on FACT_Gift.GiftFactID = h.GiftFactID_of_the_RG
+left outer join DIM_Audience on DIM_Audience.AudienceDimID = FACT_Gift.AudienceDimID
+
 
 --need to deal with these newly added products here and in main script!: PPC, PSMS - DRTV, Social Media Advertising and POSSIBLY 'Welcome Activity'
 --select distinct product from #WidenedRGHistory
