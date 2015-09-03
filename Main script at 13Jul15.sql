@@ -1600,11 +1600,14 @@ group by Type,ID
 
 ;
 
---main final comparison
-
+--main final comparison NOW STORED AS A_GM_DASHBOARDS_FullResults
+;
+delete from A_GM_DASHBOARDS_Results
+;
 declare @CurrentMonth int
 set @CurrentMonth = (select Top 1 CalendarYearMonth from DIM_Date where IsCurrentMonth = 1)
 
+insert into A_GM_DASHBOARDS_Results
 select 
 AllWorkingExceptSorting.*,
 m.CalendarYearMonth,
@@ -1630,6 +1633,7 @@ case
 	when YTDActual IS null Or YTDActual = 0 then null
 	else 100*((YTDActual - YTDTarget) / YTDTarget)
 end as [YTD_%Over(Under)Target]
+
 from
 (
 select
@@ -2074,7 +2078,10 @@ or EveryRelevantMonth < Cancellations.MonthCancelled --i.e. had been cancelled d
 
 ;
 
---to make final totals
+--to make final totals - NOW STORED IN A_GM_Dashboards_RGFileSizeEndEachMonth
+delete from A_GM_Dashboards_RGFileSizeEndEachMonth
+;
+insert into A_GM_Dashboards_RGFileSizeEndEachMonth
 select CalendarYearMonth, DashID, COUNT (distinct ConstituentID) as Givers,COUNT (Distinct GiftFactID_of_the_RG) as Gifts,SUM(AnnualAmountAtEndThisMonth) as Value
 from #RegularGivingResultsWithoutRemovingOutdatedAmendments
 left outer join A_GM_DashBoards_Grouping
