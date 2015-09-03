@@ -228,7 +228,10 @@ and [All].CalendarYearMonth = [DeceasedRows].CalendarYearMonth
 ;
 
 --40 Producing counts and sums of amounts for each month ever
-
+--now stored as A_GM_Dashboards_FileSizeActuals
+delete from A_GM_Dashboards_FileSizeActuals
+;
+insert into A_GM_Dashboards_FileSizeActuals
 select
 s.CalendarYearMonth,
 s.GiverCategory,
@@ -243,10 +246,13 @@ order by CalendarYearMonth,GiverCategory
 ;
 
 --50 Working out amount given DURING EACH MONTH by people in each category at END that month
+--now stored as A_GM_Dashboards_FileSizeCrossedGiving
 --Could easily be limited by month to save time
 --Individuals only
 --Allows ANY regular giving payment, but cash are limited to the current 'DMT + MD' definition
-
+delete from A_GM_Dashboards_FileSizeCrossedGiving
+;
+insert into A_GM_Dashboards_FileSizeCrossedGiving
 select
 GiverCategory,
 GiftType,
