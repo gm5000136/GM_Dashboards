@@ -62,14 +62,18 @@ left outer join
 (
 select
 GiftFactID,
-case when
---next line deals with 'null' and assumes they are all long in the past. Issue re-raised of getting these corrected on RE (and noted as issue on github)
-s.[Gift Status Date] is null then 197912 else CalendarYearMonth end as MonthCancelled
+case 
+--next line treats all cancelled where not yet in imported gift status date table from RE as having cancelled in the CURRENT month!
+when s.[Gift Status Date] IS null and s.[System Record ID] IS null then (select top 1 calendaryearmonth from DIM_Date where IsCurrentMonth	= 1)
+--next line deals with 'null' where they ARE in the imported gift status date table from RE, and assumes they are all long in the past. Issue re-raised of getting these corrected on RE (and noted as issue on github)
+--I believe in practice they do all go back to 2005 or earlier...
+when s.[Gift Status Date] is null then 197912 else CalendarYearMonth end as MonthCancelled
 from
 A_GM_GiftStatusDate s 
-inner join FACT_Gift g on g.GiftSystemID = s.[System Record ID]
+right outer join FACT_Gift g on g.GiftSystemID = s.[System Record ID]
+inner join DIM_GiftStatus gs on gs.GiftStatusDimID = g.GiftStatusDimID--
 left outer join DIM_Date d on d.ActualDate = s.[Gift Status Date]
-where [Gift Status] in ('Terminated','Cancelled','Completed')
+where gs.GiftStatus in ('Terminated','Cancelled','Completed')
 ) Cancellations 
 on Cancellations.GiftFactID = r.GiftFactID_of_the_RG
 where 
@@ -90,11 +94,141 @@ on t1.ConstituentID = t2.ConstituentID
 and t1.CalendarYearMonth = t2.CalendarYearMonth
 and t1.GiftFactID_of_the_RG = t2.GiftFactID_of_the_RG
 and t1.LatestSequence < t2.LatestSequence
+;
+--this is additional bit to start being able to look back at retention rates and similar, it populates A_GM_Dashboards_RGRetentionByMandateStart
+select
+ConstituentID,
+Giftfactid,
+GiftStatus,
+MonthMandateSetUp,
+case when GiftStatus = 'Active' then NULL else MonthDuringWhichStatusChanged end as MonthDuringWhichCancelled,
+FinalMonthGiftWasActiveAtEndOf
+into #GiftDateInfo
+from
+(
+select 
+MainSub.*,
+case when
+GiftStatus = 'Active' then null
+else
+everymonth.CalendarYearMonth end as FinalMonthGiftWasActiveAtEndOf -- Is null for 12k cancelled old gifts without known status dates
+from
+(
+select 
+ConstituentID,
+GiftFactID,
+dategift.CalendarYearMonth as MonthMandateSetUp,
+gs.GiftStatus,
+datestatuschanged.CalendarYearMonth as MonthDuringWhichStatusChanged,
+datestatuschanged.MonthsSince as MonthsSinceStatusChanged
+from
+fact_gift g
+left outer join DIM_Date dategift on dategift.ActualDate = g.GiftDate
+inner join DIM_Constituent c on c.ConstituentDimID = g.ConstituentDimID
+inner join DIM_GiftStatus gs on gs.GiftStatusDimID = g.GiftStatusDimID
+left outer join A_GM_giftstatusdate s 
+left outer join DIM_Date datestatuschanged on datestatuschanged.ActualDate = s.[Gift Status Date]
+on s.[System Record ID] = g.GiftSystemID
+where GiftTypeDimID = 30
+--order by GiftFactID,[Gift Status Date] desc,giftdate desc
+) MainSub
+left outer join
+(select distinct calendaryearmonth,monthssince from DIM_Date) everymonth
+on everymonth.MonthsSince = MainSub.MonthsSinceStatusChanged +1
+) SubToBringTogether
 
 
 
+--put facts into a long table for each month
+SELECT 
+--r.ConstituentID,
+--r.GiftFactID_of_the_RG,
+r.CalendarYearMonth,
+r.PaymentType,
+g.MonthMandateSetUp,
+g.MonthDuringWhichCancelled,
+COUNT(distinct r.ConstituentID) as Constituents, --this distinct makes it take a lot longer (but is useful since there are fewer constituents than gifts)
+COUNT(r.GiftFactID_of_the_RG) as Gifts,
+SUM(r.AnnualAmountAtEndThisMonth) as AnnualAmountAtEndThisMonth
+into #RetentionLongTable
+FROM
+#RegularGivingResults r
+full outer join 
+#GiftDateInfo g
+on g.GiftFactID = r.GiftFactID_of_the_RG
+group by 
+--r.ConstituentID,
+--r.GiftFactID_of_the_RG,
+r.CalendarYearMonth,
+r.PaymentType,
+g.MonthMandateSetUp,
+g.MonthDuringWhichCancelled
+order by AnnualAmountAtEndThisMonth desc
+;
 
-
+--populate A_GM_Dashboards_RGRetentionByMandateStart
+delete from A_GM_Dashboards_RGRetentionByMandateStart
+;
+insert into A_GM_Dashboards_RGRetentionByMandateStart
+select
+CalendarYearMonth,
+PaymentType,
+CancellationStatus,
+NumberOfMonthsSinceMandateSetUp_CancelledOnly,
+SUM (Constituents) as Constituents,
+SUM (Gifts) as Gifts,
+SUM (AnnualAmountAtEndThisMonth) as AnnualAmountAtEndThisMonth
+from
+(
+select 
+CalendarYearMonth,
+PaymentType,
+case 
+when NumberOfMonthsPriorThatWasMonthGiftWasCancelledDuring <0 then null
+when NumberOfMonthsPriorThatWasMonthGiftWasCancelledDuring is null then null
+else NumberOfMonthsSinceMandateSetUp
+end as NumberOfMonthsSinceMandateSetUp_CancelledOnly,
+Case 
+when NumberOfMonthsPriorThatWasMonthGiftWasCancelledDuring <0 then 'Cancelled in future'
+when NumberOfMonthsPriorThatWasMonthGiftWasCancelledDuring =0 then 'Cancelled DURING this month'
+when NumberOfMonthsPriorThatWasMonthGiftWasCancelledDuring is null then 'Still active now'
+else 'Cancelled BEFORE this month'
+end as CancellationStatus,
+Constituents,
+Gifts,
+AnnualAmountAtEndThisMonth
+from
+(
+select 
+r.CalendarYearMonth,
+r.PaymentType,
+r.MonthMandateSetUp,
+r.MonthDuringWhichCancelled,
+r.Constituents,
+r.Gifts,
+r.AnnualAmountAtEndThisMonth,
+case 
+when dateofinterest.MonthsSince - datecancelled.MonthsSince <1 then 1 else 0 end as [CancelledByEndOfThisMonth?],
+--dateofinterest.MonthsSince as MonthsSinceMonthLookingAt,
+--datecancelled.MonthsSince as MonthsSinceCancellation,
+datecancelled.MonthsSince - dateofinterest.MonthsSince as NumberOfMonthsPriorThatWasMonthGiftWasCancelledDuring,
+dateofmandatesetup.MonthsSince - dateofinterest.monthssince  as NumberOfMonthsSinceMandateSetUp
+from #RetentionLongTable r
+left outer join (select distinct calendaryearmonth,monthssince from DIM_Date) datecancelled on datecancelled.CalendarYearMonth = r.MonthDuringWhichCancelled
+left outer join (select distinct calendaryearmonth,monthssince from DIM_Date) dateofinterest on dateofinterest.CalendarYearMonth = r.CalendarYearMonth
+left outer join (select distinct calendaryearmonth,monthssince from DIM_Date) dateofmandatesetup on dateofmandatesetup.CalendarYearMonth = r.MonthMandateSetUp
+where 
+--r.CalendarYearMonth = MonthDuringWhichCancelled
+--and r.CalendarYearMonth - MonthDuringWhichCancelled >-1
+r.CalendarYearMonth > 201003
+--order by MonthDuringWhichCancelled desc, MonthMandateSetUp desc
+) sub
+) widersubtoputnoncancelledtogether
+group by
+CalendarYearMonth,
+PaymentType,
+CancellationStatus,
+NumberOfMonthsSinceMandateSetUp_CancelledOnly
 
 ;
 
