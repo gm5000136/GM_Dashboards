@@ -571,7 +571,7 @@ case
 --This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. 
 --This is because that means the person was account managed by HV, so anything they do is credited to that team!
 --This is often LOST for amendments as target audience changes are not put on the amendment
-WHEN TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23') then 72
+WHEN TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23','24') then 73
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
 --A couple of steps to cover RULE 4:
 WHEN 
@@ -728,7 +728,7 @@ case
 --This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. 
 --This is because that means the person was account managed by HV, so anything they do is credited to that team!
 --This is often LOST for amendments as target audience changes are not put on the amendment
-WHEN TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23') then 72
+WHEN TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23','24') then 73
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
 --A couple of steps to cover RULE 4:
 WHEN 
@@ -875,7 +875,7 @@ case
 --This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. 
 --This is because that means the person was account managed by HV, so anything they do is credited to that team!
 --This is often LOST for amendments as target audience changes are not put on the amendment
-WHEN TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23') then 72
+WHEN TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23','24') then 73
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
 --A couple of steps to cover RULE 4:
 WHEN 
@@ -1051,10 +1051,10 @@ from
 (
 select
 CASE 
---This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. 
+--This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Direct Solicited'. 
 --This is because that means the person was account managed by HV, so anything they do is credited to that team!
 --This is often LOST for amendments as target audience changes are not put on the amendment
-WHEN TargetAudience = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23') then 72
+WHEN TargetAudience = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23','24') then 73
 --this second one for cash only applies the 'pre-rule' for rollingSMS, not currently a numbered rule (since campaign is not of use to us)
 WHEN sub.appealidentifier in (select RollingSMSAppealID from #AppealsToBeTreatedAsRollingSMS) then 58
 --rule C1: separate out all peer to peer WHERE A COMMUNITY OR EVENTS GIFT
@@ -1911,7 +1911,7 @@ case
 --This first one moves ANY Supporter Development Team Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. This is often LOST for amendments as target audience changes are not put on the amendment
 WHEN h.GM_TIEStyle_CampaignDescriptor like 'Supporter Development%'
 --This needs looking at!
-AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23') then 72
+AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23','24') then 73
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
 --A couple of steps to cover RULE 4:
 WHEN 
@@ -2088,3 +2088,4 @@ left outer join A_GM_DashBoards_Grouping
 on A_GM_DashBoards_Grouping.ID = #RegularGivingResultsWithoutRemovingOutdatedAmendments.DashID
 group by CalendarYearMonth, DashID
 order by CalendarYearMonth,DashID asc
+
