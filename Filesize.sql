@@ -3,7 +3,6 @@
 --Constraints
 --Individuals only. But NOT limited to 'IGE' regular gifts.
 
-
 --10 regular giving calculation
 --I tried using CTEs for this, but there's just too much data even though there was no index suggestion. Temp tables coped fine in a very tiny fraction of the time CTE approach took.
 
@@ -27,7 +26,31 @@ and Amounts.Sequence = LatestSequence.LatestSequence
 inner join FACT_Gift on latestsequence.GiftFactID_of_the_RG = FACT_Gift.GiftFactID
 inner join DIM_PaymentType PT on PT.PaymentTypeDimID = fact_gift.PaymentTypeDimID
 ;
---All regular gifts crossed with every single relevant month since that gift began (including first month)
+--REMOVING a few large cancelled gifts with no payments as agreed with Adrian 9Sep15. This removed only 44 at that time, but has a visible impact on retention graphs
+select f.GiftFactID
+into #AFewUnrealisticOnlineRGsToIgnore
+from 
+A_GM_TBL_RG_Facts f
+inner join 
+FACT_Gift g
+on g.GiftFactID = f.GiftFactID
+inner join 
+DIM_GiftCode gc on gc.GiftCodeDimID = g.GiftCodeDimID
+where 
+First_Installment_Date is null
+and f.GiftStatus not in ('Held','Active')
+and GiftHasBeenUpgraded = 'No'
+and gc.Description = 'Website Direct Debit'
+and f.AnnualAmount > 1800
+
+
+delete from #RegularGiftDetails
+where GiftFactID_of_the_RG in
+(
+select * from #AFewUnrealisticOnlineRGsToIgnore
+)
+;
+--All regular gifts (except the big 'fake' ones removed above...) crossed with every single relevant month since that gift began (including first month)
 --Commented out limiter to months from specific month can save time
 --takes 105 seconds alone with limiter
 select distinct GiftFactID_of_the_RG, CalendarYearMonth as EveryRelevantMonth
@@ -43,7 +66,11 @@ DIM_Date d on d.CalendarYearMonth >= r.GiftStartMonth
 --where d.CalendarYearMonth >201303 --just limiting for speed
 and CalendarYearMonth < (select top 1 CalendarYearMonth from DIM_Date where IsCurrentMonth = 1)
 ;
+--delete the gifts from this aspect too
+delete from #EveryMonthGiftMayHaveExisted
+where GiftFactID_of_the_RG in (select * from #AFewUnrealisticOnlineRGsToIgnore)
 
+;
 --combining into main regular giving list by constituent and gift
 select 
 r.ConstituentID,
@@ -69,17 +96,28 @@ when s.[Gift Status Date] IS null and s.[System Record ID] IS null then (select 
 --I believe in practice they do all go back to 2005 or earlier...
 when s.[Gift Status Date] is null then 197912 else CalendarYearMonth end as MonthCancelled
 from
-A_GM_GiftStatusDate s 
-right outer join FACT_Gift g on g.GiftSystemID = s.[System Record ID]
-inner join DIM_GiftStatus gs on gs.GiftStatusDimID = g.GiftStatusDimID--
+FACT_Gift g
+left outer join A_GM_GiftStatusDate s on g.GiftSystemID = s.[System Record ID]
+left outer join DIM_GiftStatus gs on gs.GiftStatusDimID = g.GiftStatusDimID--
 left outer join DIM_Date d on d.ActualDate = s.[Gift Status Date]
-where gs.GiftStatus in ('Terminated','Cancelled','Completed')
+where gs.GiftStatus in ('Terminated','Cancelled','Completed','No Gift Status')
 ) Cancellations 
 on Cancellations.GiftFactID = r.GiftFactID_of_the_RG
 where 
 Cancellations.MonthCancelled is null --i.e. still active now
 or EveryRelevantMonth < Cancellations.MonthCancelled --i.e. had been cancelled during or since that month
-
+;
+USE [tempdb]
+GO
+CREATE NONCLUSTERED INDEX GM_TempIndex1
+ON [dbo].[#RegularGivingResultsBeforeRemovingOutdatedAmendments] ([GiftFactID_of_the_RG])
+GO
+;
+USE BBPM_DW
+;
+--delete the gifts from there too!
+delete from #RegularGivingResultsBeforeRemovingOutdatedAmendments
+where GiftFactID_of_the_RG in (select * from #AFewUnrealisticOnlineRGsToIgnore)
 ;
 --further work to only keep the highest sequence number for each person, for each month
 --before this, both the old and new annualised value would show for all with amendments
@@ -101,7 +139,7 @@ ConstituentID,
 Giftfactid,
 GiftStatus,
 MonthMandateSetUp,
-case when GiftStatus = 'Active' then NULL else MonthDuringWhichStatusChanged end as MonthDuringWhichCancelled,
+case when GiftStatus in ('Active','Held') then NULL else MonthDuringWhichStatusChanged end as MonthDuringWhichCancelled,
 FinalMonthGiftWasActiveAtEndOf
 into #GiftDateInfo
 from
@@ -136,7 +174,10 @@ left outer join
 (select distinct calendaryearmonth,monthssince from DIM_Date) everymonth
 on everymonth.MonthsSince = MainSub.MonthsSinceStatusChanged +1
 ) SubToBringTogether
-
+;
+--remove those gifts from this part...
+delete from #GiftDateInfo
+where GiftFactID in (select * from #AFewUnrealisticOnlineRGsToIgnore)
 
 
 --put facts into a long table for each month
@@ -165,7 +206,15 @@ g.MonthMandateSetUp,
 g.MonthDuringWhichCancelled
 order by AnnualAmountAtEndThisMonth desc
 ;
-
+USE [tempdb]
+GO
+CREATE NONCLUSTERED INDEX GM_TempIndex2
+ON [dbo].[#RetentionLongTable] ([CalendarYearMonth])
+INCLUDE ([PaymentType],[MonthMandateSetUp],[MonthDuringWhichCancelled],[Constituents],[Gifts],[AnnualAmountAtEndThisMonth])
+GO
+;
+USE BBPM_DW
+;
 --populate A_GM_Dashboards_RGRetentionByMandateStart
 delete from A_GM_Dashboards_RGRetentionByMandateStart
 ;
@@ -174,7 +223,7 @@ select
 CalendarYearMonth,
 PaymentType,
 CancellationStatus,
-NumberOfMonthsSinceMandateSetUp_CancelledOnly,
+NumberOfMonthsSinceMandateSetUp,
 SUM (Constituents) as Constituents,
 SUM (Gifts) as Gifts,
 SUM (AnnualAmountAtEndThisMonth) as AnnualAmountAtEndThisMonth
@@ -183,11 +232,15 @@ from
 select 
 CalendarYearMonth,
 PaymentType,
+/* if making nice summary this could be useful, but we need the full version to only look at (for instance) recent gifts in the final analysis
 case 
-when NumberOfMonthsPriorThatWasMonthGiftWasCancelledDuring <0 then null
-when NumberOfMonthsPriorThatWasMonthGiftWasCancelledDuring is null then null
-else NumberOfMonthsSinceMandateSetUp
+when NumberOfMonthsPriorThatWasMonthGiftWasCancelledDuring <0 then null --for this we ignore gifts cancelled after the month we're looking at
+when NumberOfMonthsPriorThatWasMonthGiftWasCancelledDuring is null then null --for this we ignore gifts still active today at time running script
+when NumberOfMonthsPriorThatWasMonthGiftWasCancelledDuring >0 then null --for this we ignore gifts cancelled before the month we're looking at
+else NumberOfMonthsSinceMandateSetUp --in other words, this is ONLY populated for the gifts cancelled during the particular month
 end as NumberOfMonthsSinceMandateSetUp_CancelledOnly,
+*/
+NumberOfMonthsSinceMandateSetUp,
 Case 
 when NumberOfMonthsPriorThatWasMonthGiftWasCancelledDuring <0 then 'Cancelled in future'
 when NumberOfMonthsPriorThatWasMonthGiftWasCancelledDuring =0 then 'Cancelled DURING this month'
@@ -228,7 +281,7 @@ group by
 CalendarYearMonth,
 PaymentType,
 CancellationStatus,
-NumberOfMonthsSinceMandateSetUp_CancelledOnly
+NumberOfMonthsSinceMandateSetUp
 
 ;
 
@@ -308,6 +361,14 @@ select constituentID as t2_ID,Calendaryearmonth,SUM(c.CashGivenWithin24Mths) as 
 from #IndividualCashResults c
 group by constituentID,Calendaryearmonth
 ) t2 on t1.t1_ID = t2.t2_ID and t1.CalendarYearMonth = t2.CalendarYearMonth
+;
+USE [tempdb]
+GO
+CREATE NONCLUSTERED INDEX GM_TempIndex3
+ON [dbo].[#StatusOfEachPersonEachMonth] ([GiverCategory])
+GO
+;
+USE BBPM_DW
 ;
 delete from #StatusOfEachPersonEachMonth
 where GiverCategory = 'HasntGivenInThePeriodWeAreLookingAt'
