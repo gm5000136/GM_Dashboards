@@ -1336,7 +1336,29 @@ AND
 	MainSummary.GM_TIEStyle_CampaignDescriptor not like 'SRec%'
 	AND
 	MainSummary.GM_TIEStyle_CampaignDescriptor not like 'Supporter Development & Retention Team%'
-) then 998 --rule R26
+	AND
+	MainSummary.GM_TIEStyle_CampaignDescriptor not like 'Digital Marketing Team%'
+	AND
+	MainSummary.GM_TIEStyle_CampaignDescriptor not like 'Community Team%'
+	AND
+	MainSummary.GM_TIEStyle_CampaignDescriptor not like 'Comm - Not Categorised%'
+	AND
+	MainSummary.GM_TIEStyle_CampaignDescriptor not like 'Events Team%'
+) then 998 --rule R26 part 1 of 3
+when
+(
+MainSummary.GM_TIEStyle_CampaignDescriptor like 'Community Team%'
+OR 
+MainSummary.GM_TIEStyle_CampaignDescriptor like 'Comm - Not Categorised%'
+)
+AND 
+GM_TIEStyle_CampaignDescriptor not like '%High Value%'
+then 31 -- rule R26 part 2 of 3
+when
+MainSummary.GM_TIEStyle_CampaignDescriptor like 'Events Team%'
+AND 
+GM_TIEStyle_CampaignDescriptor not like '%High Value%'
+then 27 -- rule R26 part 3 of 3
 when GM_TIEStyle_CampaignDescriptor like '%Upgrade%' and PaymentType = 'Direct Debit' and (BeforeOrAfterApril  = 'Gift started during this financial year' or AmendedThisFYOrNot = 'Gift amended during this financial year') then 82 --rule R27
 when GM_TIEStyle_CampaignDescriptor like '%Upgrade%' and PaymentType <> 'Direct Debit' and (BeforeOrAfterApril = 'Gift started during this financial year' or AmendedThisFYOrNot = 'Gift amended during this financial year') then 83 --rule R28
 when GM_TIEStyle_CampaignDescriptor like '%High Value%' and PaymentType = 'Direct Debit' then 68 --rule R29
@@ -2088,4 +2110,3 @@ left outer join A_GM_DashBoards_Grouping
 on A_GM_DashBoards_Grouping.ID = #RegularGivingResultsWithoutRemovingOutdatedAmendments.DashID
 group by CalendarYearMonth, DashID
 order by CalendarYearMonth,DashID asc
-
