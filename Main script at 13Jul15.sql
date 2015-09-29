@@ -2,11 +2,17 @@
 
 select distinct AppealIdentifier 
 into #AppealsToBeTreatedAsUpgrade
-from DIM_Appeal
-where AppealIdentifier like '%/u%'
+from DIM_Appeal a
+inner join DIM_Campaign c on c.CampaignDimID = a.CampaignDimID
+where 
+(
+AppealIdentifier like '%/u%'
 and AppealIdentifier not like 'RA/%'
 and AppealDescription not like '%Unallocated%'
 and AppealDescription not like '%Unicef%'
+)
+or
+c.CampaignDescription = 'Upgrade Activity'
 
 --preprestep 2: appealidentifiers to be regarded as rollingSMS (for ID 58)
 --relevant to cash payments only
@@ -568,10 +574,13 @@ select
 'AnnualValueOfNewRegularGifts' as [Type],
 CalendarYearMonth,
 case 
---This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. 
+--This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV AND the product is 'direct solicited donations' to 'HV Direct Solicited'. 
 --This is because that means the person was account managed by HV, so anything they do is credited to that team!
 --This is often LOST for amendments as target audience changes are not put on the amendment
-WHEN TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23','24') then 73
+WHEN 
+TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' 
+and Product = 'Direct Solicited Donations'
+and RuleNumberToApply not IN ('17','18','19','23','24') then 73
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
 --A couple of steps to cover RULE 4:
 WHEN 
@@ -593,6 +602,7 @@ WHEN RuleNumberToApply = 7 and Product = 'PSMS - DRTV' then 55
 WHEN RuleNumberToApply = 7 then 33
 when
 	RuleNumberToApply in (17,18,19) 
+	AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' 
 	and Product = 'Direct Solicited Donations'
 	then 73
 WHEN RuleNumberToApply in (17,18,19) then 72
@@ -725,10 +735,13 @@ select
 'AnnualValueOfChangesToRegularGifts' as [Type],
 calendaryearmonth_of_amendment as CalendarYearMonth,
 case 
---This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. 
+--This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV AND the product is 'direct solicited donations' to 'HV Direct Solicited'. 
 --This is because that means the person was account managed by HV, so anything they do is credited to that team!
 --This is often LOST for amendments as target audience changes are not put on the amendment
-WHEN TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23','24') then 73
+WHEN 
+TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' 
+and Product = 'Direct Solicited Donations'
+and RuleNumberToApply not IN ('17','18','19','23','24') then 73
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
 --A couple of steps to cover RULE 4:
 WHEN 
@@ -750,6 +763,7 @@ WHEN RuleNumberToApply = 7 and Product = 'PSMS - DRTV' then 55
 WHEN RuleNumberToApply = 7 then 33
 when
 	RuleNumberToApply in (17,18,19) 
+	AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' 
 	and Product = 'Direct Solicited Donations'
 	then 73
 WHEN RuleNumberToApply in (17,18,19) then 72
@@ -872,10 +886,13 @@ select
 'AnnualValueCancelledThisMonth' as [Type],
 CalendarYearMonth,
 case 
---This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. 
+--This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV AND the product is 'direct solicited donations' to 'HV Direct Solicited'. 
 --This is because that means the person was account managed by HV, so anything they do is credited to that team!
 --This is often LOST for amendments as target audience changes are not put on the amendment
-WHEN TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23','24') then 73
+WHEN 
+TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' 
+and Product = 'Direct Solicited Donations'
+and RuleNumberToApply not IN ('17','18','19','23','24') then 73
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
 --A couple of steps to cover RULE 4:
 WHEN 
@@ -897,6 +914,7 @@ WHEN RuleNumberToApply = 7 and Product = 'PSMS - DRTV' then 55
 WHEN RuleNumberToApply = 7 then 33
 when
 	RuleNumberToApply in (17,18,19) 
+	AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' 
 	and Product = 'Direct Solicited Donations'
 	then 73
 WHEN RuleNumberToApply in (17,18,19) then 72
@@ -1051,10 +1069,13 @@ from
 (
 select
 CASE 
---This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Direct Solicited'. 
+--This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV AND the product is 'direct solicited donations' to 'HV Direct Solicited'. 
 --This is because that means the person was account managed by HV, so anything they do is credited to that team!
 --This is often LOST for amendments as target audience changes are not put on the amendment
-WHEN TargetAudience = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23','24') then 73
+WHEN 
+TargetAudience = 'High Value Supporter' 
+and Product = 'Direct Solicited Donations'
+and RuleNumberToApply not IN ('17','18','19','23','24') then 73
 --this second one for cash only applies the 'pre-rule' for rollingSMS, not currently a numbered rule (since campaign is not of use to us)
 WHEN sub.appealidentifier in (select RollingSMSAppealID from #AppealsToBeTreatedAsRollingSMS) then 58
 --rule C1: separate out all peer to peer WHERE A COMMUNITY OR EVENTS GIFT
@@ -1182,6 +1203,7 @@ WHEN RuleNumberToApply = 7 and Product = 'PSMS - DRTV' then 55
 WHEN RuleNumberToApply = 7 then 33
 WHEN 
 	RuleNumberToApply in (17,18,19) 
+	AND TargetAudience  = 'High Value Supporter' 
 	and Product = 'Direct Solicited Donations'
 	then 73
 WHEN RuleNumberToApply in (17,18,19) then 71
@@ -1930,10 +1952,12 @@ select
 h.*,
 CalendarYearMonth,
 case 
---This first one moves ANY Supporter Development Team Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV to 'HV Stewardship'. This is often LOST for amendments as target audience changes are not put on the amendment
-WHEN h.GM_TIEStyle_CampaignDescriptor like 'Supporter Development%'
---This needs looking at!
-AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' and RuleNumberToApply not IN ('17','18','19','23','24') then 73
+--This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV AND the product is 'direct solicited donations' to 'HV Direct Solicited'.--This is because that means the person was account managed by HV, so anything they do is credited to that team!
+--This is often LOST for amendments as target audience changes are not put on the amendment
+WHEN 
+TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' 
+and Product = 'Direct Solicited Donations'
+and RuleNumberToApply not IN ('17','18','19','23','24') then 73
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
 --A couple of steps to cover RULE 4:
 WHEN 
@@ -1955,6 +1979,7 @@ WHEN RuleNumberToApply = 7 and Product = 'PSMS - DRTV' then 55
 WHEN RuleNumberToApply = 7 then 33
 when
 	RuleNumberToApply in (17,18,19) 
+	AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' 
 	and Product = 'Direct Solicited Donations'
 	then 73
 WHEN RuleNumberToApply in (17,18,19) then 72
