@@ -214,52 +214,6 @@ INCLUDE ([PaymentType],[MonthMandateSetUp],[MonthDuringWhichCancelled],[Constitu
 GO
 ;
 USE BBPM_DW
-
-
-
-
-
-
-
---have run all above to populate and check temps!
-
-select * from #RetentionLongTable r
-where r.MonthMandateSetUp = 201508
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-select * from #RegularGivingResults
-where CalendarYearMonth = 201508
-
-
-
-/* I THINK THIS ONE IS RIGHT ALREADY
-select * from A_GM_Dashboards_RGRetentionByMandateStart r
-where r.CalendarYearMonth = 201508
-*/
-
-
-
-
-
-
-
-
-
 ;
 --populate A_GM_Dashboards_RGRetentionByMandateStart
 delete from A_GM_Dashboards_RGRetentionByMandateStart
