@@ -98,9 +98,9 @@ when s.[Gift Status Date] is null then 197912 else CalendarYearMonth end as Mont
 from
 FACT_Gift g
 left outer join A_GM_GiftStatusDate s on g.GiftSystemID = s.[System Record ID]
-left outer join DIM_GiftStatus gs on gs.GiftStatusDimID = g.GiftStatusDimID--
+left outer join DIM_GiftStatus gs on gs.GiftStatusDimID = g.GiftStatusDimID
 left outer join DIM_Date d on d.ActualDate = s.[Gift Status Date]
-where gs.GiftStatus in ('Terminated','Cancelled','Completed','No Gift Status')
+where gs.GiftStatus in ('Terminated','Canceled','Completed','No Gift Status')
 ) Cancellations 
 on Cancellations.GiftFactID = r.GiftFactID_of_the_RG
 where 
@@ -214,6 +214,52 @@ INCLUDE ([PaymentType],[MonthMandateSetUp],[MonthDuringWhichCancelled],[Constitu
 GO
 ;
 USE BBPM_DW
+
+
+
+
+
+
+
+--have run all above to populate and check temps!
+
+select * from #RetentionLongTable r
+where r.MonthMandateSetUp = 201508
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+select * from #RegularGivingResults
+where CalendarYearMonth = 201508
+
+
+
+/* I THINK THIS ONE IS RIGHT ALREADY
+select * from A_GM_Dashboards_RGRetentionByMandateStart r
+where r.CalendarYearMonth = 201508
+*/
+
+
+
+
+
+
+
+
+
 ;
 --populate A_GM_Dashboards_RGRetentionByMandateStart
 delete from A_GM_Dashboards_RGRetentionByMandateStart
@@ -270,11 +316,12 @@ from #RetentionLongTable r
 left outer join (select distinct calendaryearmonth,monthssince from DIM_Date) datecancelled on datecancelled.CalendarYearMonth = r.MonthDuringWhichCancelled
 left outer join (select distinct calendaryearmonth,monthssince from DIM_Date) dateofinterest on dateofinterest.CalendarYearMonth = r.CalendarYearMonth
 left outer join (select distinct calendaryearmonth,monthssince from DIM_Date) dateofmandatesetup on dateofmandatesetup.CalendarYearMonth = r.MonthMandateSetUp
-where 
+--where 
 --r.CalendarYearMonth = MonthDuringWhichCancelled
 --and r.CalendarYearMonth - MonthDuringWhichCancelled >-1
-r.CalendarYearMonth > 201003
 --order by MonthDuringWhichCancelled desc, MonthMandateSetUp desc
+--THIS NEXT ONE WOULD BE FOR CHECKING ONLY
+--r.CalendarYearMonth > 201003
 ) sub
 ) widersubtoputnoncancelledtogether
 group by
