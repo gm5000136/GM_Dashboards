@@ -1,7 +1,10 @@
---this is full version to find every month ever. By limiting it again in places indicated (search for word 'limiting') we can speed it up. It's complex but takes no longer than 30min at present
+--this is full version to find every month ever. By limiting it again in places indicated (search for word 'limiting') we can speed it up. It's complex but takes no longer than 1 hour 20 (!) at present. I have made one index since that may help that somewhat. There are even indexes on temp tables within this!
 
 --Constraints
 --Individuals only. But NOT limited to 'IGE' regular gifts.
+--Where gift is not active but there is no status date, uses date last changed on gift (i.e. doesn't look up when last payment was)
+--Relies on the RE queue being run for its cancellation information I think
+
 
 --10 regular giving calculation
 --I tried using CTEs for this, but there's just too much data even though there was no index suggestion. Temp tables coped fine in a very tiny fraction of the time CTE approach took.
@@ -84,7 +87,7 @@ from #EveryMonthGiftMayHaveExisted m
 inner join #RegularGiftDetails r 
 on r.GiftFactID_of_the_RG = m.GiftFactID_of_the_RG 
 and r.CalendarYearMonth <= m.EveryRelevantMonth
---this join is all cancellation months so that those are not included in the list
+/*--this join and criteria is to remove gifts previously cancelled should we ever not want to include those in the list
 left outer join 
 (
 select
@@ -106,6 +109,7 @@ on Cancellations.GiftFactID = r.GiftFactID_of_the_RG
 where 
 Cancellations.MonthCancelled is null --i.e. still active now
 or EveryRelevantMonth < Cancellations.MonthCancelled --i.e. had been cancelled during or since that month
+*/
 ;
 USE [tempdb]
 GO
@@ -157,8 +161,24 @@ ConstituentID,
 GiftFactID,
 dategift.CalendarYearMonth as MonthMandateSetUp,
 gs.GiftStatus,
-datestatuschanged.CalendarYearMonth as MonthDuringWhichStatusChanged,
-datestatuschanged.MonthsSince as MonthsSinceStatusChanged
+case 
+--to deal with all gifts marked inactive BUT WITH NO DATE!
+when GiftStatus not In ('Active','Held') 
+And datestatuschanged.CalendarYearMonth IS null
+then left(g.ChangedDateDimID,6)
+--for all other gifts
+else datestatuschanged.CalendarYearMonth 
+end as MonthDuringWhichStatusChanged,
+case 
+--to deal with all gifts marked inactive BUT WITH NO DATE!
+when GiftStatus not In ('Active','Held') 
+And datestatuschanged.CalendarYearMonth IS null
+then
+(select top 1 MonthsSince from DIM_Date 
+where CalendarYearMonth = left(g.ChangedDateDimID,6))
+--for all other gifts
+else datestatuschanged.MonthsSince 
+end as MonthsSinceStatusChanged
 from
 fact_gift g
 left outer join DIM_Date dategift on dategift.ActualDate = g.GiftDate
@@ -171,7 +191,8 @@ where GiftTypeDimID = 30
 --order by GiftFactID,[Gift Status Date] desc,giftdate desc
 ) MainSub
 left outer join
-(select distinct calendaryearmonth,monthssince from DIM_Date) everymonth
+(select distinct calendaryearmonth,monthssince from DIM_Date) 
+everymonth
 on everymonth.MonthsSince = MainSub.MonthsSinceStatusChanged +1
 ) SubToBringTogether
 ;
@@ -270,12 +291,11 @@ from #RetentionLongTable r
 left outer join (select distinct calendaryearmonth,monthssince from DIM_Date) datecancelled on datecancelled.CalendarYearMonth = r.MonthDuringWhichCancelled
 left outer join (select distinct calendaryearmonth,monthssince from DIM_Date) dateofinterest on dateofinterest.CalendarYearMonth = r.CalendarYearMonth
 left outer join (select distinct calendaryearmonth,monthssince from DIM_Date) dateofmandatesetup on dateofmandatesetup.CalendarYearMonth = r.MonthMandateSetUp
---where 
+--where r.CalendarYearMonth > 201003
+--THESE BITS FOR CHECKING ONLY
 --r.CalendarYearMonth = MonthDuringWhichCancelled
 --and r.CalendarYearMonth - MonthDuringWhichCancelled >-1
 --order by MonthDuringWhichCancelled desc, MonthMandateSetUp desc
---THIS NEXT ONE WOULD BE FOR CHECKING ONLY
---r.CalendarYearMonth > 201003
 ) sub
 ) widersubtoputnoncancelledtogether
 group by
@@ -352,9 +372,14 @@ end as GiverCategory
 into #StatusOfEachPersonEachMonth
 from
 (
-select constituentID as t1_ID,Calendaryearmonth,SUM(AnnualAmountAtEndThisMonth) as RegularGivingTotal
+select r.constituentID as t1_ID,Calendaryearmonth,SUM(AnnualAmountAtEndThisMonth) as RegularGivingTotal
 from #RegularGivingResults r
-group by constituentID,Calendaryearmonth
+inner join 
+#GiftDateInfo gd
+on gd.GiftFactID = r.GiftFactID_of_the_RG
+and (gd.FinalMonthGiftWasActiveAtEndOf >= r.CalendarYearMonth
+or gd.FinalMonthGiftWasActiveAtEndOf is null) 
+group by r.constituentID,Calendaryearmonth
 ) t1
 full outer join
 (
@@ -363,6 +388,7 @@ from #IndividualCashResults c
 group by constituentID,Calendaryearmonth
 ) t2 on t1.t1_ID = t2.t2_ID and t1.CalendarYearMonth = t2.CalendarYearMonth
 ;
+
 USE [tempdb]
 GO
 CREATE NONCLUSTERED INDEX GM_TempIndex3
@@ -439,6 +465,8 @@ from
 group by CalendarYearMonth,GiverCategory 
 order by CalendarYearMonth,GiverCategory
 
+
+
 ;
 
 --50 Working out amount given DURING EACH MONTH by people in each category at END that month
@@ -506,4 +534,9 @@ select * from #RegularGiftDetails where ConstituentID = 1000094
 ;
 select * from #RegularGivingResults where ConstituentID = 1000094
 order by CalendarYearMonth
+;
+select * from #StatusOfEachPersonEachMonth where ConstituentID = 303963
+order by calendaryearmonth desc
+;
+select * from #giftdateinfo where constituentid = 303963
 */
