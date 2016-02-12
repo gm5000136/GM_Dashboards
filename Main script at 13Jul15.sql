@@ -86,9 +86,9 @@ inner join
 (select giftfactid,GiftSystemID from FACT_Gift where GiftTypeDimID in (8,30) and GiftStatusDimID in (3,5)) as AllCancelledRGsAllTypes on AllCancelledRGsAllTypes.GiftFactID = VIEW_RG_History.GiftFactID_of_the_RG
 left outer join A_GM_GiftStatusDate 
 on A_GM_GiftStatusDate.[System Record ID] = AllCancelledRGsAllTypes.GiftSystemID
-and A_GM_GiftStatusDate.[Gift Status] in ('Terminated','Cancelled')
+and A_GM_GiftStatusDate.[Gift Status] in ('Terminated','Canceled')
 left outer join DIM_Date 
-on [Gift Status Date] = ActualDateString
+on [Gift Status Date] = ActualDate
 left outer join DIM_Package on DIM_Package.PackageDescription = VIEW_RG_History.PackageDescription
 inner join DIM_Appeal on DIM_Appeal.AppealIdentifier = VIEW_RG_History.AppealIdentifier
 inner join FACT_Gift on FACT_Gift.GiftFactID = VIEW_RG_History.GiftFactID_of_the_RG
@@ -574,6 +574,17 @@ select
 'AnnualValueOfNewRegularGifts' as [Type],
 CalendarYearMonth,
 case 
+--HV re-jigged per Ado 12Feb16 - ignores team-campaign and rules now! Risk of some falling to 999?
+WHEN 
+	TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' 
+	and Product = 'Direct Solicited Donations'
+	then 73
+WHEN 
+TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' 
+and Product = 'Donor Reporting'
+then 72
+--when TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' then 71 --NOT THIS LINE - FOR CASH ONLY!
+/*OLD WAY OF DEALING WITH HV HERE
 --This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV AND the product is 'direct solicited donations' to 'HV Direct Solicited'. 
 --This is because that means the person was account managed by HV, so anything they do is credited to that team!
 --This is often LOST for amendments as target audience changes are not put on the amendment
@@ -581,6 +592,28 @@ WHEN
 TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' 
 and Product = 'Direct Solicited Donations'
 and RuleNumberToApply not IN ('17','18','19','23','24') then 73
+*/
+--new rules added 12Feb16 for IDs 52,63, 35 and 62, per Ado's description of how to find
+when 
+(MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or mainsummary.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product = 'Regular Gifts - Doordrop' 
+then 52
+when 
+(MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or MainSummary.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product in ('Regular Gifts - Hothouse','Regular Gifts - BRTV','Regular Gifts - Hothouse BRTV','Regular Gifts - Hothouse Door Drop')
+then 63
+when 
+(MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or MainSummary.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product in ('Regular Gifts - Inserts')
+then 35
+when 
+(MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or MainSummary.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product = ('Regular Gifts - Word of Mouth')
+then 62
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
 --A couple of steps to cover RULE 4:
 WHEN 
@@ -600,12 +633,14 @@ WHEN RuleNumberToApply = 6 THEN 54
 --WHEN RuleNumberToApply = 7 and GiftCodeOfTheRG = 'SMS' then 55 --old version, has it been completely superseeded correctly by below?
 WHEN RuleNumberToApply = 7 and Product = 'PSMS - DRTV' then 55
 WHEN RuleNumberToApply = 7 then 33
+/*OLD WAY OF DEALING WITH HV HERE
 when
 	RuleNumberToApply in (17,18,19) 
 	AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' 
 	and Product = 'Direct Solicited Donations'
 	then 73
 WHEN RuleNumberToApply in (17,18,19) then 72
+*/
 --Rule21 dealt with 4 above
 WHEN 
 RuleNumberToApply = 23
@@ -651,7 +686,7 @@ WHEN RuleNumberToApply = 20 then 50
 --rule 21 dealt along with rule 4 earlier on
 WHEN RuleNumberToApply = 22 then 50
 WHEN RuleNumberToApply = 23 then 50
-WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' then 72
+--WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' then 72 --OLD WAY
 when RuleNumberToApply = 24 then 49
 WHEN RuleNumberToApply = 26 THEN 53 --Will be more complex than this in reality
 else 999
@@ -735,6 +770,17 @@ select
 'AnnualValueOfChangesToRegularGifts' as [Type],
 calendaryearmonth_of_amendment as CalendarYearMonth,
 case 
+--HV re-jigged per Ado 12Feb16 - ignores team-campaign and rules now! Risk of some falling to 999?
+WHEN 
+	TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' 
+	and Product = 'Direct Solicited Donations'
+	then 73
+WHEN 
+TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' 
+and Product = 'Donor Reporting'
+then 72
+--when TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' Then 71 --NOT HERE: CASH
+/* OLD HV HERE
 --This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV AND the product is 'direct solicited donations' to 'HV Direct Solicited'. 
 --This is because that means the person was account managed by HV, so anything they do is credited to that team!
 --This is often LOST for amendments as target audience changes are not put on the amendment
@@ -742,7 +788,29 @@ WHEN
 TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' 
 and Product = 'Direct Solicited Donations'
 and RuleNumberToApply not IN ('17','18','19','23','24') then 73
+*/
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
+--new rules added 12Feb16 for IDs 52,63, 35 and 62, per Ado's description of how to find
+when 
+(MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or mainsummary.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product = 'Regular Gifts - Doordrop' 
+then 52
+when 
+(MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or MainSummary.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product in ('Regular Gifts - Hothouse','Regular Gifts - BRTV','Regular Gifts - Hothouse BRTV','Regular Gifts - Hothouse Door Drop')
+then 63
+when 
+(MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or MainSummary.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product in ('Regular Gifts - Inserts')
+then 35
+when 
+(MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or MainSummary.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product = ('Regular Gifts - Word of Mouth')
+then 62
 --A couple of steps to cover RULE 4:
 WHEN 
 	RuleNumberToApply IN (4,21)
@@ -761,12 +829,14 @@ WHEN RuleNumberToApply = 6 THEN 54
 --WHEN RuleNumberToApply = 7 and GiftCodeOfTheRG = 'SMS' then 55 --old version, has it been completely superseeded correctly by below?
 WHEN RuleNumberToApply = 7 and Product = 'PSMS - DRTV' then 55
 WHEN RuleNumberToApply = 7 then 33
+/* old hv
 when
 	RuleNumberToApply in (17,18,19) 
 	AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' 
 	and Product = 'Direct Solicited Donations'
 	then 73
 WHEN RuleNumberToApply in (17,18,19) then 72
+*/
 --Rule21 dealt with 4 above
 WHEN 
 RuleNumberToApply = 23
@@ -812,7 +882,7 @@ WHEN RuleNumberToApply = 20 then 50
 --rule 21 dealt along with rule 4 earlier on
 WHEN RuleNumberToApply = 22 then 50
 WHEN RuleNumberToApply = 23 then 50
-WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' then 72
+--WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' then 72 --old hv
 when RuleNumberToApply = 24 then 49
 WHEN RuleNumberToApply = 26 THEN 53 --Will be more complex than this in reality
 else 999
@@ -886,6 +956,17 @@ select
 'AnnualValueCancelledThisMonth' as [Type],
 CalendarYearMonth,
 case 
+--HV re-jigged per Ado 12Feb16 - ignores team-campaign and rules now! Risk of some falling to 999?
+WHEN 
+	TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' 
+	and Product = 'Direct Solicited Donations'
+	then 73
+WHEN 
+TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' 
+and Product = 'Donor Reporting'
+then 72
+--when TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' then 71 --NOT HERE - ONLY APPLIES TO CASH
+/* OLD HV
 --This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV AND the product is 'direct solicited donations' to 'HV Direct Solicited'. 
 --This is because that means the person was account managed by HV, so anything they do is credited to that team!
 --This is often LOST for amendments as target audience changes are not put on the amendment
@@ -893,6 +974,28 @@ WHEN
 TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' 
 and Product = 'Direct Solicited Donations'
 and RuleNumberToApply not IN ('17','18','19','23','24') then 73
+*/
+--new rules added 12Feb16 for IDs 52,63, 35 and 62, per Ado's description of how to find
+when 
+(MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or mainsummary.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product = 'Regular Gifts - Doordrop' 
+then 52
+when 
+(MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or MainSummary.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product in ('Regular Gifts - Hothouse','Regular Gifts - BRTV','Regular Gifts - Hothouse BRTV','Regular Gifts - Hothouse Door Drop')
+then 63
+when 
+(MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or MainSummary.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product in ('Regular Gifts - Inserts')
+then 35
+when 
+(MainSummary.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or MainSummary.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product = ('Regular Gifts - Word of Mouth')
+then 62
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
 --A couple of steps to cover RULE 4:
 WHEN 
@@ -912,12 +1015,14 @@ WHEN RuleNumberToApply = 6 THEN 54
 --WHEN RuleNumberToApply = 7 and GiftCodeOfTheRG = 'SMS' then 55 --old version, has it been completely superseeded correctly by below?
 WHEN RuleNumberToApply = 7 and Product = 'PSMS - DRTV' then 55
 WHEN RuleNumberToApply = 7 then 33
+/* OLD HV
 when
 	RuleNumberToApply in (17,18,19) 
 	AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' 
 	and Product = 'Direct Solicited Donations'
 	then 73
 WHEN RuleNumberToApply in (17,18,19) then 72
+*/
 --Rule21 dealt with 4 above
 WHEN 
 RuleNumberToApply = 23
@@ -963,7 +1068,7 @@ WHEN RuleNumberToApply = 20 then 50
 --rule 21 dealt along with rule 4 earlier on
 WHEN RuleNumberToApply = 22 then 50
 WHEN RuleNumberToApply = 23 then 50
-WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' then 72
+--WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' then 72 --OLD HV
 when RuleNumberToApply = 24 then 49
 WHEN RuleNumberToApply = 26 THEN 53 --Will be more complex than this in reality
 else 999
@@ -1069,6 +1174,19 @@ from
 (
 select
 CASE 
+--HV re-jigged per Ado 12Feb16 - ignores team-campaign and rules now! Risk of some falling to 999?
+WHEN 
+	TargetAudience  = 'High Value Supporter' 
+	and Product = 'Direct Solicited Donations'
+	then 73
+WHEN 
+TargetAudience  = 'High Value Supporter' 
+and Product = 'Donor Reporting'
+then 72
+when
+TargetAudience  = 'High Value Supporter' --this applies here since this is cash!
+then 71
+/* OLD HV HERE
 --This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV AND the product is 'direct solicited donations' to 'HV Direct Solicited'. 
 --This is because that means the person was account managed by HV, so anything they do is credited to that team!
 --This is often LOST for amendments as target audience changes are not put on the amendment
@@ -1076,6 +1194,7 @@ WHEN
 TargetAudience = 'High Value Supporter' 
 and Product = 'Direct Solicited Donations'
 and RuleNumberToApply not IN ('17','18','19','23','24') then 73
+*/
 --this second one for cash only applies the 'pre-rule' for rollingSMS, not currently a numbered rule (since campaign is not of use to us)
 WHEN sub.appealidentifier in (select RollingSMSAppealID from #AppealsToBeTreatedAsRollingSMS) then 58
 --rule C1: separate out all peer to peer WHERE A COMMUNITY OR EVENTS GIFT
@@ -1118,13 +1237,15 @@ and sub.TargetAudience = 'Peer to Peer Fundraiser'
 then 87
 --that's the end of rule 1. At the moment, not enough detail to add any gifts to number 85
 --rule CE2: assign Glastonbury gifts received in any part of community or events
-when (sub.GM_TIEStyle_CampaignDescriptor like 'Event%' OR sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
-and sub.Product = 'Glastonbury Festival'
+when 
+--(sub.GM_TIEStyle_CampaignDescriptor like 'Event%' OR sub.GM_TIEStyle_CampaignDescriptor like 'Comm%') and 
+sub.Product = 'Glastonbury Festival'
 then 26
 --rule CE3. For the remaining (i.e. not peer-to-peer and not glastonbury) events and community gifts...lots in the one rule to keep numbering
 --rule CE3 part 1: mass participation
-when (sub.GM_TIEStyle_CampaignDescriptor like 'Event%' OR sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
-and Product in ('WaterAid 200','Tough Sh!t') --these were the only ones time of writing 28Jul15
+when 
+--(sub.GM_TIEStyle_CampaignDescriptor like 'Event%' OR sub.GM_TIEStyle_CampaignDescriptor like 'Comm%') and 
+Product in ('WaterAid 200','Tough Sh!t') --these were the only ones time of writing 28Jul15
 then 88
 --rule CE3 part 2: running/cycling/other active events
 when (sub.GM_TIEStyle_CampaignDescriptor like 'Event%' OR sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
@@ -1156,20 +1277,27 @@ then 25
 --rule CE3 part 3: other events fundraising (i.e. all else starting events)
 when (sub.GM_TIEStyle_CampaignDescriptor like 'Event%') then 27
 --rule CE3 part 4: split community based on target audience
-when (sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
-and TargetAudience = 'Faith Groups' then 28
-when (sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
-and TargetAudience = 'Schools' then 29
-when (sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
-and TargetAudience = 'Local Groups' then 89
-when (sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
-and TargetAudience = 'Choir Groups' then 91
-when (sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
-and TargetAudience = 'Youth Groups' then 92
-when (sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
-and TargetAudience = 'Universities' then 93
-when (sub.GM_TIEStyle_CampaignDescriptor like 'Comm%')
-and TargetAudience 
+when 
+--(sub.GM_TIEStyle_CampaignDescriptor like 'Comm%') and 
+TargetAudience = 'Faith Groups' then 28
+when 
+--(sub.GM_TIEStyle_CampaignDescriptor like 'Comm%') and 
+TargetAudience = 'Schools' then 29
+when 
+--(sub.GM_TIEStyle_CampaignDescriptor like 'Comm%') and 
+TargetAudience = 'Local Groups' then 89
+when 
+--(sub.GM_TIEStyle_CampaignDescriptor like 'Comm%') and 
+TargetAudience = 'Choir Groups' then 91
+when 
+--(sub.GM_TIEStyle_CampaignDescriptor like 'Comm%') and 
+TargetAudience = 'Youth Groups' then 92
+when 
+--(sub.GM_TIEStyle_CampaignDescriptor like 'Comm%') and 
+TargetAudience = 'Universities' then 93
+when 
+--(sub.GM_TIEStyle_CampaignDescriptor like 'Comm%') and 
+TargetAudience 
 IN
 (
 'Inner Wheel Clubs',
@@ -1181,6 +1309,27 @@ IN
 'Soroptimist Clubs'
 )
 then 30
+--new rules added 12Feb16 for IDs 52,63, 35 and 62, per Ado's description of how to find
+when 
+(sub.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or sub.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product = 'Regular Gifts - Doordrop' 
+then 52
+when 
+(sub.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or sub.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product in ('Regular Gifts - Hothouse','Regular Gifts - BRTV','Regular Gifts - Hothouse BRTV','Regular Gifts - Hothouse Door Drop')
+then 63
+when 
+(sub.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or sub.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product in ('Regular Gifts - Inserts')
+then 35
+when 
+(sub.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or sub.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product = ('Regular Gifts - Word of Mouth')
+then 62
 --no speaker network gifts at the moment - Caroline told me they'd be better kept with the target audience of the gifts, although informal(ish) attempts to measure effect of talks on giving are made
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID --we are now passed the 'pre-rule' stuff...
 WHEN 
@@ -1193,7 +1342,7 @@ WHEN
 	when RuleNumberToApply = 21 and Product = 'PPC' then 45
 	when RuleNumberToApply = 21 and Product = 'Social Media Advertising' then 61
 	when RuleNumberToApply = 21 then 39
-WHEN RuleNumberToApply = 5 and GiftCode like '%Wahoo%' THEN 46	
+WHEN RuleNumberToApply = 5 and (GiftCode like '%Wahoo%' or Product = 'Wahoo Gifting') THEN 46	
 WHEN RuleNumberToApply = 5 Then 51 --No such thing as regular wahoo, so any would have to be shop
 WHEN RuleNumberToApply = 6 and Product = 'PPC' then 45
 when RuleNumberToApply = 6 and Product = 'Social Media Advertising' then 61
@@ -1201,12 +1350,7 @@ WHEN RuleNumberToApply = 6 THEN 53
 --WHEN RuleNumberToApply = 7 and GiftCodeOfTheRG = 'SMS' then 55 --old version, has it been completely superseeded correctly by below?
 WHEN RuleNumberToApply = 7 and Product = 'PSMS - DRTV' then 55
 WHEN RuleNumberToApply = 7 then 33
-WHEN 
-	RuleNumberToApply in (17,18,19) 
-	AND TargetAudience  = 'High Value Supporter' 
-	and Product = 'Direct Solicited Donations'
-	then 73
-WHEN RuleNumberToApply in (17,18,19) then 71
+
 --updated rule 20 in case it had been including PPC and/or facebook
 WHEN RuleNumberToApply = 20 and Product = 'PPC' then 45
 when RuleNumberToApply = 20 and Product = 'Social Media Advertising' then 61
@@ -1214,8 +1358,7 @@ WHEN RuleNumberToApply = 20 then 50
 --rule 21 dealt along with rule 4 earlier on
 WHEN RuleNumberToApply = 22 then 50
 WHEN RuleNumberToApply = 23 then 50
-WHEN RuleNumberToApply = 24 AND TargetAudience = 'High Value Supporter' then 72
-when RuleNumberToApply = 24 then 49
+when RuleNumberToApply = 24 then 49 --HV part that used to be here now dealt with earlier
 WHEN RuleNumberToApply = 26 THEN 53 --Will be more complex than this in reality
 ELSE 999 END AS DashGroup,
 DIM_Date.CalendarYearMonth,
@@ -1934,7 +2077,6 @@ left outer join DIM_Appeal a on a.AppealIdentifier = h.AppealIdentifier
 inner join FACT_Gift on FACT_Gift.GiftFactID = h.GiftFactID_of_the_RG
 left outer join DIM_Audience on DIM_Audience.AudienceDimID = FACT_Gift.AudienceDimID
 
-
 --need to deal with these newly added products here and in main script!: PPC, PSMS - DRTV, Social Media Advertising and POSSIBLY 'Welcome Activity'
 --select distinct product from #WidenedRGHistory
 
@@ -1952,12 +2094,47 @@ select
 h.*,
 CalendarYearMonth,
 case 
+--HV re-jigged per Ado 12Feb16 - ignores team-campaign and rules now! Risk of some falling to 999?
+WHEN 
+	TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' 
+	and Product = 'Direct Solicited Donations'
+	then 73
+WHEN 
+TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter' 
+and Product = 'Donor Reporting'
+then 72
+when
+TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments  = 'High Value Supporter'
+then 71
+/* OLD WAY OF DEALING WITH HV HERE
 --This first one moves ANY Gift, where not one of the HV groupings or the upgrade one (by rule), where the target audience IS HV AND the product is 'direct solicited donations' to 'HV Direct Solicited'.--This is because that means the person was account managed by HV, so anything they do is credited to that team!
 --This is often LOST for amendments as target audience changes are not put on the amendment
 WHEN 
 TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' 
 and Product = 'Direct Solicited Donations'
 and RuleNumberToApply not IN ('17','18','19','23','24') then 73
+*/
+--new rules added 12Feb16 for IDs 52,63, 35 and 62, per Ado's description of how to find
+when 
+(h.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or h.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product = 'Regular Gifts - Doordrop' 
+then 52
+when 
+(h.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or h.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product in ('Regular Gifts - Hothouse','Regular Gifts - BRTV','Regular Gifts - Hothouse BRTV','Regular Gifts - Hothouse Door Drop')
+then 63
+when 
+(h.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or h.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product in ('Regular Gifts - Inserts')
+then 35
+when 
+(h.GM_TIEStyle_CampaignDescriptor like 'Supporter Recruitment%' 
+or h.GM_TIEStyle_CampaignDescriptor like 'SRec%')
+and Product = ('Regular Gifts - Word of Mouth')
+then 62
 WHEN RuleNumberToApply = 0 THEN DefaultGroupingID 
 --A couple of steps to cover RULE 4:
 WHEN 
@@ -2028,7 +2205,6 @@ WHEN RuleNumberToApply = 20 then 50
 --rule 21 dealt along with rule 4 earlier on
 WHEN RuleNumberToApply = 22 then 50
 WHEN RuleNumberToApply = 23 then 50
-WHEN RuleNumberToApply = 24 AND TargetAudienceOfAppeal_NB_NotStoredOnGiftForAmendments = 'High Value Supporter' then 72
 when RuleNumberToApply = 24 then 49
 WHEN RuleNumberToApply = 26 THEN 53 --Will be more complex than this in reality
 else 999
@@ -2116,7 +2292,7 @@ from
 A_GM_GiftStatusDate s 
 inner join FACT_Gift g on g.GiftSystemID = s.[System Record ID]
 left outer join DIM_Date d on d.ActualDate = s.[Gift Status Date]
-where [Gift Status] in ('Terminated','Cancelled','Completed')
+where [Gift Status] in ('Terminated','Canceled','Completed')
 ) Cancellations 
 on Cancellations.GiftFactID = r.GiftFactID_of_the_RG
 where 
