@@ -1,0 +1,56 @@
+With Actuals as
+(
+select 
+left(p.donationdatesk,6) as calendaryearmonth,
+count(distinct p.ConstituentSK) as Count_FaithGroups_MakingPayment,
+sum(amount) as Sum_AmountGiven_ByFaithGroups
+from
+FACT_Payment p inner join
+DIM_Constituent c on c.constituentsk = p.constituentsk
+where KeyIndicator = 'O' and Organisation_Type = 'Faith Groups'
+group by left(p.donationdatesk,6)
+)
+select 
+targets.CalendarYearMonth
+,targets.Target_Value
+,Actuals.Count_FaithGroups_MakingPayment
+,Actuals.Sum_AmountGiven_ByFaithGroups
+from
+(
+select * from
+[WADW].[staging].[Dashboards_Targets_NonFinancial]
+where Target_Description = 'Count of distinct faith groups making donation in month'
+) targets
+left join 
+Actuals 
+on targets.CalendarYearMonth = Actuals.CalendarYearMonth
+
+
+
+
+
+
+
+/* just keeping in case it's useful to have more detail
+with AllFaithGroups_Making_HardCredited_Payment as
+(
+select
+c.constituentSk,
+c.Organisation_Category,
+c.Organisation_Diocese,
+c.organisation_name,
+p.DonationDateSK,
+d.CalendarYearMonth,
+p.PaymentSK,
+p.Amount
+from 
+FACT_Payment p inner join
+(
+--narrow down for speed
+select datesk,calendaryearmonth from dim_date 
+where CalendarYearMonth in (select calendaryearmonth from [WADW].[staging].[Dashboards_Targets_NonFinancial] where Target_Description = 'Count of distinct faith groups making donation in month')
+) d on d.DateSK = p.DonationDateSK inner join
+DIM_Constituent c on c.constituentsk = p.constituentsk
+where KeyIndicator = 'O' and Organisation_Type = 'Faith Groups'
+)
+*/
