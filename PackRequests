@@ -1,0 +1,38 @@
+--first CTE defines which packs are regarded as what...Dan and I thought these most likely to be correct at 11Oct16
+
+with MaterialList as
+(
+select
+m.MaterialSentSK
+,case when Item = 'Pupil Pipeline Pack' then 'Pupil Pipeline pack request'
+when item in ('Primary School Pack','Secondary School Pack') then 'Water Resource pack request'
+else '[Other or unknown]'
+end as Category
+,Item
+,da.ActivityCategory
+,da.ActivityDescription
+,case when c.ConstituentSK = null then c_justincasewrongdirection.ConstituentSK else c.ConstituentSK end as ConstituentSK
+,a.ActualEnd_DateSK as DateSK
+,m.Quantity
+from 
+DIM_MaterialSent m left join
+FACT_Activity a on a.ActivitySK = m.ActivitySK_Letter left join 
+DIM_Activity da on da.activitydimensionsk = a.ActivityDimensionSK
+left join DIM_Constituent c on a.ToRecipient_ConstituentSK = c.constituentsk
+left join DIM_Constituent c_justincasewrongdirection on c_justincasewrongdirection.ConstituentSK = a.Sender_ConstituentSK
+where
+item like '%Pack%'
+and ActivitySK_Letter > -1 --trusting that all are sent as letters
+)
+select
+left(datesk,6) as CalendarYearMonth
+,Category
+,count(materialsentSK) as Count_PackRequestsMade
+,sum(Quantity) as Sum_IndividualPacksRequested
+from
+MaterialList
+where Category <> '[Other or unknown]'
+group by 
+left(datesk,6)
+,Category
+order by CalendarYearMonth desc
