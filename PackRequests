@@ -25,14 +25,31 @@ item like '%Pack%'
 and ActivitySK_Letter > -1 --trusting that all are sent as letters
 )
 select
-left(datesk,6) as CalendarYearMonth
-,Category
-,count(materialsentSK) as Count_PackRequestsMade
-,sum(Quantity) as Sum_IndividualPacksRequested
+targets.Target_Category
+,targets.Target_Description
+,targets.SubCategory_as_provided
+,d.FiscalYear as FiscalYearEnding
+,targets.CalendarYearMonth
+,targets.Target_Value
+,count(materialsentSK) as Actual_Value
+,'Sum_IndividualPacksRequested' as ExtraStat_Description
+,coalesce(sum(Quantity),0) as ExtraStat_Value
 from
-MaterialList
-where Category <> '[Other or unknown]'
+(
+select * from
+[WADW].[staging].[Dashboards_Targets_NonFinancial]
+where Team = 'Community and Events' and target_description = 'Count of pack requests made in month' and SubCategory_as_provided like '%pack request%'
+) targets
+inner join 
+(select distinct calendaryearmonth,fiscalyear from DIM_Date) d on d.CalendarYearMonth = targets.CalendarYearMonth
+left join
+(select * from MaterialList where Category <> '[Other or unknown]') FilteredMaterialList
+on FilteredMaterialList.Category = targets.SubCategory_as_provided
+and left(FilteredMaterialList.DateSK,6) = d.CalendarYearMonth
 group by 
-left(datesk,6)
-,Category
-order by CalendarYearMonth desc
+targets.Target_Category
+,targets.Target_Description
+,targets.SubCategory_as_provided
+,d.FiscalYear
+,targets.CalendarYearMonth
+,targets.Target_Value
